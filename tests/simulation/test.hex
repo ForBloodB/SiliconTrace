@@ -1,0 +1,87 @@
+// PicoRV32 基本功能测试程序
+// 测试内容：寄存器操作、ALU运算、分支跳转、存储器读写
+//
+// 测试结果：写 0x10000 = 1 表示通过，0 表示失败
+//
+// 指令编码使用 RV32I 指令集
+
+// 地址 0x00: 初始化
+// li x1, 1          -> addi x1, x0, 1
+00100093
+// li x2, 2          -> addi x2, x0, 2
+00200113
+// li x3, 0          -> addi x3, x0, 0
+00000193
+
+// 测试1: ADD
+// add x3, x1, x2    -> x3 = 1 + 2 = 3
+002081b3
+// li x4, 3          -> addi x4, x0, 3
+00300213
+// bne x3, x4, fail  -> if (x3 != 3) goto fail
+00419463
+
+// 测试2: SUB
+// li x1, 10         -> addi x1, x0, 10
+00a00093
+// li x2, 4          -> addi x2, x0, 4
+00400113
+// sub x3, x1, x2    -> x3 = 10 - 4 = 6
+402081b3
+// li x4, 6          -> addi x4, x0, 6
+00600213
+// bne x3, x4, fail
+00419463
+
+// 测试3: AND/OR/XOR
+// li x1, 0xFF       -> addi x1, x0, 0xFF (actually 255 = 0xFF)
+0ff00093
+// li x2, 0x0F       -> addi x2, x0, 15
+00f00113
+// and x3, x1, x2    -> x3 = 0xFF & 0x0F = 0x0F
+0020f1b3
+// li x4, 0x0F
+00f00213
+// bne x3, x4, fail
+00419463
+
+// 测试4: 存储器写/读
+// li x1, 0x100      -> addi x1, x0, 0x100 (地址)
+10000093
+// li x2, 0xABCD     -> lui x2, 0xABCD0 (高20位)
+abcd1137
+// addi x2, x2, 0xCD -> 低12位 (注意: 这里简化处理)
+// sw x2, 0(x1)      -> 存储
+0020a023
+// lw x3, 0(x1)      -> 读回
+0000a183
+// bne x3, x2, fail
+00219463
+
+// 测试5: BNE/BEQ 分支
+// li x1, 5
+00500093
+// li x2, 5
+00500113
+// beq x1, x2, pass  -> if (x1 == x2) goto pass
+00208463
+
+// fail: 写 0 到 0x10000
+// fail:
+// li x1, 0x10000     -> lui x1, 0x10
+000100b7
+// sw x0, 0(x1)       -> 写0表示失败
+0000a023
+// loop_fail: j loop_fail
+0000006f
+
+// pass: 写 1 到 0x10000
+// pass:
+// li x1, 0x10000     -> lui x1, 0x10
+000100b7
+// li x2, 1           -> addi x2, x0, 1
+00100113
+// sw x2, 0(x1)       -> 写1表示通过
+0020a023
+// loop_pass: j loop_pass
+0000006f

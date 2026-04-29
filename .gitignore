@@ -1,0 +1,67 @@
+# 硅迹开源 - Git忽略文件
+
+# 编译产物
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# 综合结果
+synthesis/results/*.v
+synthesis/results/*.json
+synthesis/results/*.sdc
+synthesis/synth_actual.ys
+
+# 后端结果
+backend/result/
+backend/**/*.def
+backend/**/*.rpt
+backend/**/*.gds
+backend/converted/
+backend/**/sta_actual.tcl
+
+# GDSII文件
+*.gds
+*.gdsii
+
+# KiCad备份文件
+kicad/**/*~
+kicad/**/*-backups/
+kicad/**/*.kicad_pcb-bak
+kicad/**/*.kicad_sch-bak
+
+# 日志文件
+*.log
+*.log.*
+
+# 临时文件
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+env/
+.env
+
+# 测试结果
+tests/simulation/results/
+tests/formal/results/

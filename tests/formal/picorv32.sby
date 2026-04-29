@@ -1,0 +1,27 @@
+# SymbiYosys 配置文件 - PicoRV32 形式验证
+# 硅迹开源 (SiliconTrace Open)
+
+[tasks]
+bmc
+cover
+
+[options]
+bmc:
+mode bmc
+depth 20
+
+cover:
+mode cover
+depth 20
+
+[engines]
+smtbmc
+
+[script]
+read -formal ../../rtl/picorv32/picorv32.v
+read -formal properties.v
+prep -top picorv32
+
+[files]
+../../rtl/picorv32/picorv32.v
+properties.v
