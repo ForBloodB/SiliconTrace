@@ -28,6 +28,7 @@ backend/**/sta_actual.tcl
 # KiCad备份文件
 kicad/**/*~
 kicad/**/*-backups/
+kicad/**/.history/
 kicad/**/*.kicad_pcb-bak
 kicad/**/*.kicad_sch-bak
 
