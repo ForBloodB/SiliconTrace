@@ -1,0 +1,161 @@
+# 硅迹开源 - 使用说明
+
+## 快速开始
+
+### 环境要求
+- Ubuntu 22.04 (WSL2 或原生)
+- 内存：建议 8GB+（最低 4GB）
+- 磁盘：约 10GB 空闲空间
+
+### 1. 环境配置
+```bash
+# 安装系统依赖
+sudo apt update
+sudo apt install -y build-essential cmake libboost-all-dev libeigen3-dev \
+    libgoogle-glog-dev libgflags-dev libtbb-dev libgtest-dev libgmp-dev \
+    kicad python3-pip
+
+# 安装 Yosys
+sudo apt install -y yosys
+
+# 安装 iEDA（源码编译，约 30-60 分钟）
+cd ~
+git clone https://github.com/OSCC-Project/iEDA.git
+cd iEDA
+mkdir build && cd build
+cmake ..
+make -j1  # 使用 -j1 避免内存不足
+
+# 安装 SKY130 PDK
+pip install volare
+volare enable --pdk sky130
+```
+
+### 2. 运行 RTL→GDSII 全流程
+```bash
+cd ~/SiliconTrace_Open
+
+# 步骤 1: Yosys 综合
+bash synthesis/run_synth.sh
+
+# 步骤 2: iEDA 后端（FP→PL→CTS→RT→STA→GDSII）
+bash backend/run_ieda.sh
+```
+
+### 3. 查看 KiCad 测试载板
+```bash
+# 打开原理图
+kicad kicad/test_board/test_board.kicad_sch
+
+# 打开 PCB Layout
+kicad kicad/test_board/test_board.kicad_pcb
+```
+
+---
+
+## 各阶段生成文件说明
+
+### 综合阶段 (synthesis/results/)
+| 文件 | 说明 | 查看方式 |
+|------|------|---------|
+| `picorv32_netlist.v` | 综合后 Verilog 网表 | `vim` / `code` |
+| `picorv32_netlist.json` | JSON 格式网表 | `vim` / `code` |
+| `picorv32.sdc` | 时序约束文件 | `vim` / `code` |
+
+### 后端阶段 (backend/result/)
+| 文件 | 说明 | 查看方式 |
+|------|------|---------|
+| `iFP_result.def` | Floorplan DEF 文件 | `vim` / KLayout |
+| `iPL_result.def` | 布局 DEF 文件 | `vim` / KLayout |
+| `iCTS_result.def` | 时钟树 DEF 文件 | `vim` / KLayout |
+| `iRT_result.def` | 布线 DEF 文件（如有） | `vim` / KLayout |
+| `final_design.def` | 最终 DEF 文件 | `vim` / KLayout |
+| `final_design.v` | 最终 Verilog 网表 | `vim` / `code` |
+| `picorv32.gds2` | GDSII 物理版图 | KLayout |
+| `sta/picorv32.rpt` | STA 时序报告 | `vim` / `code` |
+| `sta/*.skew` | 时钟偏斜报告 | `vim` / `code` |
+| `report/*.rpt` | 各阶段数据库报告 | `vim` / `code` |
+
+### KiCad 文件 (kicad/)
+| 文件 | 说明 | 查看方式 |
+|------|------|---------|
+| `test_board/test_board.kicad_sch` | 原理图 | KiCad (kicad 命令) |
+| `test_board/test_board.kicad_pcb` | PCB Layout | KiCad (kicad 命令) |
+| `symbols/picorv32.kicad_sym` | PicoRV32 符号 | KiCad 符号编辑器 |
+| `footprints/QFN-48_7x7mm_P0.5mm.kicad_mod` | QFN-48 封装 | KiCad 封装编辑器 |
+
+### 测试文件 (tests/)
+| 文件 | 说明 | 查看方式 |
+|------|------|---------|
+| `simulation/tb_picorv32.v` | 仿真测试平台 | `vim` / `code` |
+| `simulation/test.hex` | 测试程序 | `vim` / `code` |
+| `simulation/Makefile` | 仿真构建脚本 | `vim` / `code` |
+| `formal/picorv32.sby` | SymbiYosys 配置 | `vim` / `code` |
+| `formal/properties.v` | 形式验证属性 | `vim` / `code` |
+
+---
+
+## 常用工具安装
+
+### KLayout（查看 GDSII/DEF）
+```bash
+sudo apt install klayout
+# 打开 GDSII 文件
+klayout backend/result/picorv32.gds2
+```
+
+### GTKWave（查看仿真波形）
+```bash
+sudo apt install gtkwave
+# 仿真后查看波形
+gtkwave tests/simulation/dump.vcd
+```
+
+### SymbiYosys（形式验证）
+```bash
+pip install symbiyosys
+# 运行形式验证
+cd tests/formal
+bash run_formal.sh
+```
+
+---
+
+## 项目架构
+
+```
+RTL (PicoRV32)
+    │
+    ▼
+Yosys 综合 ──→ Verilog 网表 + SDC 约束
+    │
+    ▼
+iEDA 后端
+    ├── Floorplan (iFP) ──→ 布局规划
+    ├── Placement (iPL) ──→ 标准单元布局
+    ├── CTS (iCTS) ──→ 时钟树综合
+    ├── Routing (iRT) ──→ 布线（有 DRC 违例）
+    ├── STA (iSTA) ──→ 静态时序分析
+    └── GDSII ──→ 物理版图
+    │
+    ▼
+KiCad 测试载板
+    ├── 原理图 (.kicad_sch)
+    └── PCB Layout (.kicad_pcb)
+```
+
+---
+
+## 已知限制
+
+1. **Routing DRC 违例**：在 7.7GB 内存环境下，布线约有 5600 个 DRC 违例。需要更大内存或降低设计密度。
+2. **SDC 约束简化**：iEDA STA 仅支持基本 SDC 命令。
+3. **单元库**：使用 HD（高密度）库，HS 库可能时序更优。
+
+---
+
+## Git 信息
+
+- 提交者：Mufire-star <1269897690@qq.com>
+- 分支：main
+- 提交数：5（含后续更新）

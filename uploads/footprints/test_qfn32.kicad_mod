@@ -1,0 +1,5 @@
+(module test_qfn32 (layer F.Cu)
+  (at 0 0)
+  (size 5 5)
+  (pad 1 smd rect (at -1.5 -1.25) (size 0.3 0.6))
+)

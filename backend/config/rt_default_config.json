@@ -1,2 +1,9 @@
 {
+    "RT": {
+        "max_routing_iteration": 50,
+        "max_overflow_iteration": 50,
+        "congestion_report": true,
+        "drc_report": true,
+        "thread_number": 4
+    }
 }

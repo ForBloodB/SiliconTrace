@@ -9,31 +9,25 @@
     (effects (font (size 1 1) (thickness 0.15)))
   )
 
-  ;; Courtyard
   (fp_line (start -4.85 -4.85) (end 4.85 -4.85) (layer F.CrtYd) (width 0.05))
   (fp_line (start 4.85 -4.85) (end 4.85 4.85) (layer F.CrtYd) (width 0.05))
   (fp_line (start 4.85 4.85) (end -4.85 4.85) (layer F.CrtYd) (width 0.05))
   (fp_line (start -4.85 4.85) (end -4.85 -4.85) (layer F.CrtYd) (width 0.05))
 
-  ;; Fab layer outline (7x7mm body)
   (fp_line (start -3.5 -3.5) (end 3.5 -3.5) (layer F.Fab) (width 0.1))
   (fp_line (start 3.5 -3.5) (end 3.5 3.5) (layer F.Fab) (width 0.1))
   (fp_line (start 3.5 3.5) (end -3.5 3.5) (layer F.Fab) (width 0.1))
   (fp_line (start -3.5 3.5) (end -3.5 -3.5) (layer F.Fab) (width 0.1))
 
-  ;; Silkscreen outline with pin 1 marker
   (fp_line (start -3.8 -3.8) (end 3.8 -3.8) (layer F.SilkS) (width 0.12))
   (fp_line (start 3.8 -3.8) (end 3.8 3.8) (layer F.SilkS) (width 0.12))
   (fp_line (start 3.8 3.8) (end -3.8 3.8) (layer F.SilkS) (width 0.12))
   (fp_line (start -3.8 3.8) (end -3.8 -3.8) (layer F.SilkS) (width 0.12))
-  ;; Pin 1 marker
   (fp_line (start -4.1 -2.75) (end -4.1 -3.8) (layer F.SilkS) (width 0.12))
   (fp_line (start -4.1 -3.8) (end -2.75 -3.8) (layer F.SilkS) (width 0.12))
 
-  ;; Exposed pad (center thermal pad)
   (pad "0" smd rect (at 0 0) (size 5.6 5.6) (layers F.Cu F.Paste F.Mask))
 
-  ;; Bottom side pads (pins 1-12)
   (pad "1" smd rect (at -2.75 -3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "2" smd rect (at -2.25 -3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "3" smd rect (at -1.75 -3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
@@ -47,7 +41,6 @@
   (pad "11" smd rect (at 2.25 -3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "12" smd rect (at 2.75 -3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
 
-  ;; Right side pads (pins 13-24)
   (pad "13" smd rect (at 3.85 -2.75) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
   (pad "14" smd rect (at 3.85 -2.25) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
   (pad "15" smd rect (at 3.85 -1.75) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
@@ -61,7 +54,6 @@
   (pad "23" smd rect (at 3.85 2.25) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
   (pad "24" smd rect (at 3.85 2.75) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
 
-  ;; Top side pads (pins 25-36)
   (pad "25" smd rect (at 2.75 3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "26" smd rect (at 2.25 3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "27" smd rect (at 1.75 3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
@@ -75,7 +67,6 @@
   (pad "35" smd rect (at -2.25 3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
   (pad "36" smd rect (at -2.75 3.85) (size 0.3 0.8) (layers F.Cu F.Paste F.Mask))
 
-  ;; Left side pads (pins 37-48)
   (pad "37" smd rect (at -3.85 2.75) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
   (pad "38" smd rect (at -3.85 2.25) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))
   (pad "39" smd rect (at -3.85 1.75) (size 0.8 0.3) (layers F.Cu F.Paste F.Mask))

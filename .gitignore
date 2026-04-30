@@ -65,3 +65,7 @@ env/
 # 测试结果
 tests/simulation/results/
 tests/formal/results/
+
+# 部分工作文档
+PROGRESS.md
+plan.md

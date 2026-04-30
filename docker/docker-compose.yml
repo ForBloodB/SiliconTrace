@@ -1,0 +1,70 @@
+# ============================================================
+# 硅迹开源 - Docker Compose 配置
+# ============================================================
+version: '3.8'
+
+services:
+  # EDA 工具链服务
+  eda:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: silicontrace-eda
+    image: silicontrace:latest
+    volumes:
+      # 挂载项目目录（实时同步）
+      - ../:/workspace
+      # 挂载 SKY130 PDK（避免重复下载）
+      - silicontrace-pdk:/root/.volare
+      # 挂载 iEDA 构建缓存
+      - silicontrace-ieda:/opt/iEDA
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - PDK_ROOT=/root/.volare
+      - IEDA_ROOT=/opt/iEDA
+      - IEDA_BIN=/opt/iEDA/scripts/design/sky130_gcd/iEDA
+      - PROJECT_ROOT=/workspace
+    ports:
+      # AI 前端端口
+      - "5000:5000"
+    command: >
+      bash -c "
+        echo '=== 硅迹开源 EDA 环境 ===' &&
+        echo '工具链状态:' &&
+        echo '  Yosys:' && yosys -V 2>/dev/null | head -1 &&
+        echo '  iEDA:' && (ls /opt/iEDA/scripts/design/sky130_gcd/iEDA 2>/dev/null && echo '    已安装' || echo '    未安装') &&
+        echo '  KiCad:' && (which kicad >/dev/null 2>&1 && echo '    已安装' || echo '    未安装') &&
+        echo '  SKY130 PDK:' && (ls /root/.volare/sky130A 2>/dev/null | head -1 && echo '    已安装' || echo '    未安装') &&
+        echo '' &&
+        echo '启动 AI 控制台: python3 frontend/app.py' &&
+        echo '运行全流程: bash scripts/automation/run_full_flow.sh' &&
+        echo '' &&
+        exec bash
+      "
+
+  # AI 前端服务
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: silicontrace-frontend
+    image: silicontrace:latest
+    volumes:
+      - ../:/workspace
+    working_dir: /workspace
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=frontend/app.py
+      - FLASK_ENV=development
+    command: python3 frontend/app.py
+    depends_on:
+      - eda
+
+volumes:
+  silicontrace-pdk:
+    driver: local
+  silicontrace-ieda:
+    driver: local

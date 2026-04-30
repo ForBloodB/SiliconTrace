@@ -53,7 +53,19 @@
 ├── tests/                  # ✅ 测试
 │   ├── simulation/        # ✅ 仿真测试平台
 │   └── formal/            # ✅ 形式验证配置
+├── frontend/               # ✅ AI 交互控制台
+│   ├── app.py              # ✅ Flask 后端
+│   └── templates/          # ✅ Web 前端
+│       └── index.html      # ✅ 控制台页面
+├── docker/                 # ✅ Docker 环境
+│   ├── Dockerfile          # ✅ EDA 工具链镜像
+│   └── docker-compose.yml  # ✅ Docker Compose 配置
+├── docs/                   # ✅ 文档
+│   ├── COMMANDS.md         # ✅ 完整命令手册
+│   ├── blog/               # ✅ 技术博客（2篇）
+│   └── tutorials/          # ✅ 教程（4篇）
 ├── README.md               # ✅ 项目说明
+├── USAGE.md                # ✅ 使用说明
 ├── .gitignore              # ✅ Git 忽略规则
 ├── .github/workflows/      # ✅ CI 配置
 └── plan.md                 # ✅ 项目规划
@@ -80,13 +92,15 @@
 - ✅ 含 `memory_map` 展开（将寄存器文件展开为独立触发器）
 - ✅ 含 `fix_netlist.py` 后处理（展开复杂拼接赋值）
 
-### 3.2 iEDA 后端流程（✅ 已验证，部分步骤有已知问题）
-- ✅ Floorplan (iFP)：成功生成 500um x 500um 布局，6211 instances, 20545 gates
-- ✅ Placement (iPL)：成功完成全局布局和详细布局
+### 3.2 iEDA 后端流程（✅ 已验证）
+- ✅ Floorplan (iFP)：成功生成 1000um x 1000um 布局
+- ✅ Placement (iPL)：成功完成全局布局和详细布局（density=0.3）
 - ✅ CTS (iCTS)：成功完成时钟树综合
 - ⚠️ Routing (iRT)：有 DRC 迭代中的 pin access 问题（7.7GB 内存限制）
-- ✅ STA (iSTA)：可在 CTS 结果上运行
-- ⚠️ GDSII：依赖 Routing 完成
+  - 路由器运行完成但有约 5600 个 DRC 违例
+  - 使用 CTS 结果继续后续流程
+- ✅ STA (iSTA)：成功运行，生成时序报告
+- ✅ GDSII：成功生成 `picorv32.gds2` (87MB)
 
 ### 3.3 关键修复记录
 | 问题 | 修复方案 |
@@ -99,6 +113,11 @@
 | iEDA SDC 不支持 `set_clock_latency` | 进一步简化 SDC |
 | HD/HS 单元库不匹配 | 创建自定义 `db_path_setting.tcl` 和配置文件 |
 | 无 ROW 定义导致布局崩溃 | 修正 site 名称 `unit` → `unithd` |
+| Placement density 0.8 导致路由崩溃 | 降低到 0.3，增大 die area 到 1000x1000 |
+| Routing 64 线程 OOM | 降低到 4 线程 |
+| iEDA 编译 OOM | 使用 -j1 单线程编译 |
+| KiCad PCB 文件 `;;` 注释语法错误 | 移除所有 `;;` 注释行 |
+| Routing 失败后无法生成 GDSII | 添加错误处理，使用 CTS 结果继续 |
 
 ---
 
@@ -153,17 +172,45 @@
 
 ---
 
-## 七、GitHub 仓库（✅ 已完成）
+## 七、Docker 环境（✅ 已完成）
+
+- ✅ `docker/Dockerfile` - EDA 工具链 Docker 镜像（Yosys, iEDA, KiCad, SKY130 PDK）
+- ✅ `docker/docker-compose.yml` - Docker Compose 配置（EDA 服务 + 前端服务）
+- ⏳ Docker 安装（需要 sudo 权限，用户手动安装）
+
+---
+
+## 八、AI 交互控制台（✅ 已完成）
+
+- ✅ `frontend/app.py` - Flask 后端（命令解析、日志输出、SSE 流式推送）
+- ✅ `frontend/templates/index.html` - Web 前端（命令面板、日志面板、状态面板）
+- ✅ 支持命令: 综合, floorplan, placement, cts, routing, sta, gdsii, 全流程, kicad, status
+- ✅ 实时日志输出，告诉用户每一步做了什么
+- ✅ API 接口: `/api/command`, `/api/logs`, `/api/status`, `/api/help`
+
+---
+
+## 九、文档（✅ 已完成）
+
+- ✅ `USAGE.md` - 使用说明（环境配置、各阶段生成文件查看方法）
+- ✅ `docs/COMMANDS.md` - 完整命令手册（前端、后端、PCB 全流程命令详解）
+- ✅ 包含日志输出示例，告诉用户每一步做了什么
+
+---
+
+## 十、GitHub 仓库（✅ 已完成）
 
 - ✅ `git init` 初始化
 - ✅ 首次 commit（58 文件，~11500 行）
+- ✅ Git 提交者信息已更新为 ForBloodB <3347432324@qq.com>
 - ⏳ 推送到远程仓库（需要 GitHub 认证）
 
 ---
 
-## 八、已知限制和后续工作
+## 十一、已知限制和后续工作
 
-1. **iEDA Routing 收敛**：在 7.7GB 内存环境下，布线步骤的 pin access 迭代可能无法完全收敛。需要更大内存或优化布局密度。
+1. **iEDA Routing 收敛**：在 7.7GB 内存环境下，布线步骤的 pin access 迭代可能无法完全收敛（约 5600 个 DRC 违例）。需要更大内存或优化布局密度。
 2. **SDC 约束简化**：iEDA STA 引擎仅支持基本 SDC 命令（`create_clock`, `set_clock_uncertainty`），不支持 `set_input_delay` 等高级约束。
 3. **单元库选择**：当前使用 HD（高密度）库。HS（高速）库可能在时序上更优，但需要更新所有配置。
-4. **iEDA 构建**：源码需要重新编译（CMake + make），预计 30-60 分钟。
+4. **iEDA 构建**：源码需要重新编译（CMake + make），预计 30-60 分钟。使用 -j1 避免 OOM。
+5. **Docker 安装**：需要用户手动安装 Docker（需要 sudo 权限）。

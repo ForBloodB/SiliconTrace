@@ -14,7 +14,7 @@
                 "min_wirelength_force_bar": -300
             },
             "Density": {
-                "target_density": 0.8,
+                "target_density": 0.3,
                 "is_adaptive_bin": 1,
                 "bin_cnt_x": 128,
                 "bin_cnt_y": 128

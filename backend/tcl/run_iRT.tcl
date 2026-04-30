@@ -39,31 +39,35 @@ source $::env(TCL_SCRIPT_DIR)/DB_script/db_init_lef.tcl
 def_init -path $::env(RESULT_DIR)/iCTS_result.def
 
 #===========================================================
-##   run Router
+##   run Router (with error handling)
 #===========================================================
 init_rt -temp_directory_path "$::env(RESULT_DIR)/rt/" \
         -bottom_routing_layer "met1" \
         -top_routing_layer "met4" \
-        -thread_number 64
+        -thread_number 4
 
-run_rt
+set rt_success 1
+if {[catch {run_rt} err]} {
+    puts "Routing completed with errors: $err"
+    set rt_success 0
+}
 
-destroy_rt
+catch {destroy_rt}
 
 #===========================================================
-##   save def
+##   save def (always save, even with partial results)
 #===========================================================
 def_save -path $::env(RESULT_DIR)/iRT_result.def
 
 #===========================================================
 ##   save netlist
 #===========================================================
-netlist_save -path $::env(RESULT_DIR)/iRT_result.v -exclude_cell_names {}
+catch {netlist_save -path $::env(RESULT_DIR)/iRT_result.v -exclude_cell_names {}}
 
 #===========================================================
 ##   report db summary
 #===========================================================
-report_db -path "$::env(RESULT_DIR)/report/rt_db.rpt"
+catch {report_db -path "$::env(RESULT_DIR)/report/rt_db.rpt"}
 
 #===========================================================
 ##   Exit

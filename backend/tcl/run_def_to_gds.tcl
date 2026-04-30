@@ -26,7 +26,8 @@ source $::env(TCL_SCRIPT_DIR)/DB_script/db_init_lef.tcl
 #===========================================================
 ##   read def from routing
 #===========================================================
-def_init -path $::env(RESULT_DIR)/iRT_result.def
+set DEFAULT_INPUT_DEF "$::env(RESULT_DIR)/iRT_result.def"
+def_init -path [expr {[info exists ::env(INPUT_DEF)] ? $::env(INPUT_DEF) : $DEFAULT_INPUT_DEF}]
 
 #===========================================================
 ##   save GDSII

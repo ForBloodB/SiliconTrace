@@ -503,9 +503,6 @@
     )
   )
 
-  ;; ============================================================
-  ;; PicoRV32 CPU Instance
-  ;; ============================================================
   (symbol (lib_id "kicad:PicoRV32") (at 101.6 82.55 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -557,9 +554,6 @@
     (pin "28" (uuid "11111111-0001-0001-0001-000000000028"))
   )
 
-  ;; ============================================================
-  ;; Crystal Oscillator (100MHz)
-  ;; ============================================================
   (symbol (lib_id "kicad:Crystal") (at 55.88 67.31 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -585,7 +579,6 @@
     (pin "2" (uuid "22222222-0001-0001-0001-000000000002"))
   )
 
-  ;; Crystal load capacitors
   (symbol (lib_id "kicad:C") (at 48.26 73.66 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -636,9 +629,6 @@
     (pin "2" (uuid "22222222-0001-0001-0003-000000000002"))
   )
 
-  ;; ============================================================
-  ;; Decoupling Capacitors (100nF on VDD)
-  ;; ============================================================
   (symbol (lib_id "kicad:C") (at 116.84 55.88 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -714,7 +704,6 @@
     (pin "2" (uuid "33333333-0001-0001-0003-000000000002"))
   )
 
-  ;; Bulk capacitor
   (symbol (lib_id "kicad:C") (at 139.7 55.88 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -740,9 +729,6 @@
     (pin "2" (uuid "33333333-0001-0001-0004-000000000002"))
   )
 
-  ;; ============================================================
-  ;; Reset Circuit
-  ;; ============================================================
   (symbol (lib_id "kicad:R") (at 40.64 82.55 90) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -768,7 +754,6 @@
     (pin "2" (uuid "44444444-0001-0001-0001-000000000002"))
   )
 
-  ;; Reset button (normally open)
   (symbol (lib_id "kicad:R") (at 40.64 95.25 90) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -794,7 +779,6 @@
     (pin "2" (uuid "44444444-0001-0001-0002-000000000002"))
   )
 
-  ;; Reset filter capacitor
   (symbol (lib_id "kicad:C") (at 40.64 104.14 90) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -820,9 +804,6 @@
     (pin "2" (uuid "44444444-0001-0001-0003-000000000002"))
   )
 
-  ;; ============================================================
-  ;; JTAG Header (6-pin)
-  ;; ============================================================
   (symbol (lib_id "kicad:Conn_01x06") (at 157.48 76.2 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -852,9 +833,6 @@
     (pin "6" (uuid "55555555-0001-0001-0001-000000000006"))
   )
 
-  ;; ============================================================
-  ;; GPIO Header (8-pin)
-  ;; ============================================================
   (symbol (lib_id "kicad:Conn_01x08") (at 157.48 107.95 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -886,9 +864,6 @@
     (pin "8" (uuid "66666666-0001-0001-0001-000000000008"))
   )
 
-  ;; ============================================================
-  ;; 3.3V LDO Regulator (simplified symbol using R as placeholder)
-  ;; ============================================================
   (symbol (lib_id "kicad:R") (at 139.7 30.48 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -914,7 +889,6 @@
     (pin "2" (uuid "77777777-0001-0001-0001-000000000002"))
   )
 
-  ;; LDO input capacitor
   (symbol (lib_id "kicad:C") (at 129.54 30.48 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -940,7 +914,6 @@
     (pin "2" (uuid "77777777-0001-0001-0002-000000000002"))
   )
 
-  ;; LDO output capacitor
   (symbol (lib_id "kicad:C") (at 149.86 30.48 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -966,9 +939,6 @@
     (pin "2" (uuid "77777777-0001-0001-0003-000000000002"))
   )
 
-  ;; ============================================================
-  ;; Power symbols
-  ;; ============================================================
   (symbol (lib_id "power:+3V3") (at 116.84 48.26 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -1137,7 +1107,6 @@
     (pin "1" (uuid "88888888-0001-0001-0007-000000000001"))
   )
 
-  ;; GND symbols
   (symbol (lib_id "power:GND") (at 116.84 63.5 0) (unit 1)
     (exclude_from_sim no)
     (in_bom yes)
@@ -1354,9 +1323,6 @@
     (pin "1" (uuid "99999999-0001-0001-0009-000000000001"))
   )
 
-  ;; ============================================================
-  ;; Text labels and annotations
-  ;; ============================================================
   (text "PicoRV32 RISC-V Test Board - SKY130" (at 80 20 0)
     (effects (font (size 2.54 2.54) (thickness 0.381)))
   )
@@ -1385,10 +1351,6 @@
     (effects (font (size 1.27 1.27) (thickness 0.2032)))
   )
 
-  ;; ============================================================
-  ;; Wires (connections)
-  ;; ============================================================
-  ;; Crystal to clock input
   (wire (pts (xy 58.42 67.31) (xy 80 67.31))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0001-000000000001")
@@ -1398,7 +1360,6 @@
     (uuid "aaaaaaaa-0001-0001-0001-000000000002")
   )
 
-  ;; Crystal load caps to GND
   (wire (pts (xy 48.26 77.47) (xy 48.26 80))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0002-000000000001")
@@ -1408,19 +1369,16 @@
     (uuid "aaaaaaaa-0001-0001-0002-000000000002")
   )
 
-  ;; Reset pull-up to +3V3
   (wire (pts (xy 40.64 78.74) (xy 40.64 76.2))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0003-000000000001")
   )
 
-  ;; Reset node to CPU
   (wire (pts (xy 40.64 82.55) (xy 80 82.55))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0003-000000000002")
   )
 
-  ;; Decoupling caps VDD side
   (wire (pts (xy 116.84 52.07) (xy 116.84 48.26))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0004-000000000001")
@@ -1438,7 +1396,6 @@
     (uuid "aaaaaaaa-0001-0001-0004-000000000004")
   )
 
-  ;; Decoupling caps GND side
   (wire (pts (xy 116.84 59.69) (xy 116.84 63.5))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0005-000000000001")
@@ -1456,21 +1413,16 @@
     (uuid "aaaaaaaa-0001-0001-0005-000000000004")
   )
 
-  ;; LDO input cap
   (wire (pts (xy 129.54 26.67) (xy 129.54 24.13))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0006-000000000001")
   )
 
-  ;; LDO output to +3V3
   (wire (pts (xy 139.7 26.67) (xy 139.7 24.13))
     (stroke (width 0) (type default))
     (uuid "aaaaaaaa-0001-0001-0006-000000000002")
   )
 
-  ;; ============================================================
-  ;; Sheet instances
-  ;; ============================================================
   (sheet_instances
     (path "/" (page "1"))
   )
