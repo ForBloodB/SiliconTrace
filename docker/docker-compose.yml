@@ -14,10 +14,10 @@ services:
     volumes:
       # 挂载项目目录（实时同步）
       - ../:/workspace
-      # 挂载 SKY130 PDK（避免重复下载）
-      - silicontrace-pdk:/root/.volare
-      # 挂载 iEDA 构建缓存
-      - silicontrace-ieda:/opt/iEDA
+      # 挂载宿主机 SKY130 PDK（避免重复下载）
+      - ${HOME}/.volare:/root/.volare
+      # 挂载宿主机 iEDA（避免容器内编译）
+      - ${HOME}/iEDA:/opt/iEDA
     working_dir: /workspace
     stdin_open: true
     tty: true

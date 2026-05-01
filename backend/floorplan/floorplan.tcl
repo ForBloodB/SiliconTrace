@@ -2,7 +2,7 @@
 # 硅迹开源 (SiliconTrace Open)
 
 # 初始化数据库
-set_db init_netlist_dir ../synthesis/results
+set_db init_netlist_dir ../artifacts/synthesis
 set_db init_mmmc_file ../scripts/mmmc.tcl
 
 # 读取网表

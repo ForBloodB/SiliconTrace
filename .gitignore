@@ -1,48 +1,41 @@
-# 硅迹开源 - Git忽略文件
+# Git ignore rules for generated files and local workspace state
 
-# 编译产物
+# Build outputs
 *.o
 *.a
 *.so
 *.dylib
 *.exe
 
-# 综合结果
-synthesis/results/*.v
-synthesis/results/*.json
-synthesis/results/*.sdc
+# Generated flow artifacts
+artifacts/
+backend/result/
+synthesis/results/
+temp/
 synthesis/synth_actual.ys
 
-# 后端结果
-backend/result/
-backend/**/*.def
-backend/**/*.rpt
-backend/**/*.gds
-backend/converted/
-backend/**/sta_actual.tcl
-
-# GDSII文件
+# Layout files
 *.gds
 *.gdsii
 
-# KiCad备份文件
+# KiCad backups
 kicad/**/*~
 kicad/**/*-backups/
 kicad/**/*.kicad_pcb-bak
 kicad/**/*.kicad_sch-bak
 
-# 日志文件
+# Logs
 *.log
 *.log.*
 
-# 临时文件
+# Temp files
 *.tmp
 *.temp
 *~
 .DS_Store
 Thumbs.db
 
-# IDE文件
+# IDE files
 .vscode/
 .idea/
 *.swp
@@ -57,15 +50,17 @@ dist/
 build/
 *.egg
 
-# 虚拟环境
+# Virtual environments
 venv/
 env/
 .env
 
-# 测试结果
+# Test outputs
 tests/simulation/results/
 tests/formal/results/
+tests/simulation/*.vvp
+tests/simulation/*.vcd
 
-# 部分工作文档
+# Local working notes
 PROGRESS.md
 plan.md

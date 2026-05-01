@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     libbz2-dev \
     libsqlite3-dev \
     liblzma-dev \
+    libcurl4-openssl-dev \
     tcl-dev \
     tk-dev \
     flex \
@@ -69,7 +70,6 @@ RUN apt-get update && apt-get install -y kicad && rm -rf /var/lib/apt/lists/*
 # ============================================================
 RUN pip3 install --no-cache-dir \
     volare \
-    symbiyosys \
     pyyaml \
     jinja2 \
     flask \
@@ -78,23 +78,7 @@ RUN pip3 install --no-cache-dir \
     requests
 
 # ============================================================
-# 5. 安装 SKY130 PDK
-# ============================================================
-RUN volare enable --pdk sky130
-
-# ============================================================
-# 6. 编译 iEDA
-# ============================================================
-RUN cd /opt && \
-    git clone https://github.com/OSCC-Project/iEDA.git && \
-    cd iEDA && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    echo "iEDA build completed"
-
-# ============================================================
-# 7. 设置环境变量
+# 5. 设置环境变量（PDK 和 iEDA 通过 volume 挂载）
 # ============================================================
 ENV PDK_ROOT=/root/.volare
 ENV IEDA_ROOT=/opt/iEDA
@@ -103,17 +87,17 @@ ENV PROJECT_ROOT=/workspace
 ENV PATH="/opt/iEDA/scripts/design/sky130_gcd:${PATH}"
 
 # ============================================================
-# 8. 创建工作目录
+# 7. 创建工作目录
 # ============================================================
 WORKDIR /workspace
 
 # ============================================================
-# 9. 复制项目文件
+# 8. 复制项目文件
 # ============================================================
 COPY . /workspace/
 
 # ============================================================
-# 10. 设置入口点
+# 9. 设置入口点
 # ============================================================
 ENTRYPOINT ["/bin/bash"]
 CMD ["-c", "echo '=== 硅迹开源 EDA 环境 ===' && echo 'Yosys:' && yosys -V && echo 'iEDA:' && ls -la /opt/iEDA/scripts/design/sky130_gcd/iEDA && echo 'KiCad:' && kicad --version 2>/dev/null || echo 'KiCad available' && echo 'SKY130 PDK:' && ls ~/.volare/sky130A/ 2>/dev/null | head -5 && echo '' && echo '使用方法: docker run -it silicontrace bash'"]

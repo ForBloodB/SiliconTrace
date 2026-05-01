@@ -145,35 +145,35 @@ bash synthesis/run_synth.sh
 [10:00:15] [info] 执行 pass: techmap
 [10:00:20] [info] 执行 pass: dfflibmap -liberty sky130_fd_sc_hd
 [10:00:25] [info] 执行 pass: abc -liberty sky130_fd_sc_hd
-[10:00:45] [info] 写入网表: synthesis/results/picorv32_netlist.v
-[10:00:46] [info] 写入 JSON: synthesis/results/picorv32_netlist.json
+[10:00:45] [info] 写入网表: artifacts/synthesis/picorv32_netlist.v
+[10:00:46] [info] 写入 JSON: artifacts/synthesis/picorv32_netlist.json
 [10:00:47] [info] 步骤 3: 后处理网表 (fix_netlist.py)
 [10:00:47] [info] 展开复杂拼接赋值...
 [10:00:48] [info] 处理了 156 个拼接赋值
 [10:00:49] [info] 步骤 4: 复制 SDC 约束文件
 [10:00:49] [success] 综合完成!
 [10:00:49] [info] 输出文件:
-[10:00:49] [info]   - synthesis/results/picorv32_netlist.v (839KB)
-[10:00:49] [info]   - synthesis/results/picorv32_netlist.json (2.9MB)
-[10:00:49] [info]   - synthesis/results/picorv32.sdc
+[10:00:49] [info]   - artifacts/synthesis/picorv32_netlist.v (839KB)
+[10:00:49] [info]   - artifacts/synthesis/picorv32_netlist.json (2.9MB)
+[10:00:49] [info]   - artifacts/synthesis/picorv32.sdc
 ```
 
 ### 2.2 输出文件说明
 
 | 文件 | 大小 | 说明 | 查看方式 |
 |------|------|------|---------|
-| `synthesis/results/picorv32_netlist.v` | 839KB | 综合后 Verilog 网表 | `vim` / `code` |
-| `synthesis/results/picorv32_netlist.json` | 2.9MB | JSON 格式网表 | `vim` / `code` |
-| `synthesis/results/picorv32.sdc` | 378B | 时序约束文件 | `vim` / `code` |
+| `artifacts/synthesis/picorv32_netlist.v` | 839KB | 综合后 Verilog 网表 | `vim` / `code` |
+| `artifacts/synthesis/picorv32_netlist.json` | 2.9MB | JSON 格式网表 | `vim` / `code` |
+| `artifacts/synthesis/picorv32.sdc` | 378B | 时序约束文件 | `vim` / `code` |
 
 ### 2.3 验证综合结果
 
 ```bash
 # 查看网表
-head -50 synthesis/results/picorv32_netlist.v
+head -50 artifacts/synthesis/picorv32_netlist.v
 
 # 查看统计信息
-grep -E "(wire|cell|module)" synthesis/results/picorv32_netlist.v | head -20
+grep -E "(wire|cell|module)" artifacts/synthesis/picorv32_netlist.v | head -20
 ```
 
 ---
@@ -193,16 +193,16 @@ bash backend/run_ieda.sh
 
 ```bash
 export CONFIG_DIR=backend/config
-export RESULT_DIR=backend/result
+export RESULT_DIR=artifacts/backend
 export TCL_SCRIPT_DIR=~/iEDA/scripts/design/sky130_gcd/script
 export CUSTOM_TCL_DIR=backend/tcl
-export NETLIST_FILE=synthesis/results/picorv32_netlist.v
+export NETLIST_FILE=artifacts/synthesis/picorv32_netlist.v
 export SDC_FILE=synthesis/constraints/picorv32.sdc
 export DESIGN_TOP=picorv32
 export DIE_AREA="0.0 0.0 1000.0 1000.0"
 export CORE_AREA="10.0 10.0 990.0 990.0"
 
-mkdir -p backend/result/report backend/result/rt
+mkdir -p artifacts/backend/report artifacts/backend/rt
 
 ~/iEDA/scripts/design/sky130_gcd/iEDA -script backend/tcl/run_iFP.tcl
 ```
@@ -228,7 +228,7 @@ mkdir -p backend/result/report backend/result/rt
 [10:01:15] [info] 步骤 7: 放置 IO 端口
 [10:01:16] [info] 步骤 8: 放置 Tap 单元
 [10:01:18] [info] 步骤 9: 保存 DEF
-[10:01:19] [success] Floorplan 完成! 输出: backend/result/iFP_result.def
+[10:01:19] [success] Floorplan 完成! 输出: artifacts/backend/iFP_result.def
 ```
 
 #### 步骤 2: Placement (布局)
@@ -248,7 +248,7 @@ mkdir -p backend/result/report backend/result/rt
 [10:02:15] [info] 步骤 3: 详细布局 (Detailed Placement)
 [10:02:20] [info] 步骤 4: 插入填充单元 (Filler)
 [10:02:25] [info] 步骤 5: 保存 DEF
-[10:02:26] [success] Placement 完成! 输出: backend/result/iPL_result.def
+[10:02:26] [success] Placement 完成! 输出: artifacts/backend/iPL_result.def
 ```
 
 #### 步骤 3: CTS (时钟树综合)
@@ -265,7 +265,7 @@ mkdir -p backend/result/report backend/result/rt
 [10:03:05] [info] 步骤 3: 插入时钟缓冲器
 [10:03:10] [info] 步骤 4: 时钟树平衡
 [10:03:15] [info] 步骤 5: 保存 DEF
-[10:03:16] [success] CTS 完成! 输出: backend/result/iCTS_result.def
+[10:03:16] [success] CTS 完成! 输出: artifacts/backend/iCTS_result.def
 ```
 
 #### 步骤 4: Routing (布线)
@@ -294,7 +294,7 @@ mkdir -p backend/result/report backend/result/rt
 
 ```bash
 # 使用 CTS 结果 (如果 Routing 未完成)
-export INPUT_DEF=backend/result/iCTS_result.def
+export INPUT_DEF=artifacts/backend/iCTS_result.def
 ~/iEDA/scripts/design/sky130_gcd/iEDA -script backend/tcl/run_iSTA.tcl
 ```
 
@@ -315,15 +315,15 @@ export INPUT_DEF=backend/result/iCTS_result.def
 +-----------+-------------+------------+------------+---------------+-------+--------+-----------+
 [10:05:17] [success] STA 完成!
 [10:05:17] [info] 输出:
-[10:05:17] [info]   - backend/result/sta/picorv32.rpt (时序报告)
-[10:05:17] [info]   - backend/result/sta/picorv32_setup.skew
-[10:05:17] [info]   - backend/result/sta/picorv32_hold.skew
+[10:05:17] [info]   - artifacts/backend/sta/picorv32.rpt (时序报告)
+[10:05:17] [info]   - artifacts/backend/sta/picorv32_setup.skew
+[10:05:17] [info]   - artifacts/backend/sta/picorv32_hold.skew
 ```
 
 #### 步骤 6: GDSII 生成
 
 ```bash
-export INPUT_DEF=backend/result/iCTS_result.def
+export INPUT_DEF=artifacts/backend/iCTS_result.def
 ~/iEDA/scripts/design/sky130_gcd/iEDA -script backend/tcl/run_def_to_gds.tcl
 ```
 
@@ -333,34 +333,34 @@ export INPUT_DEF=backend/result/iCTS_result.def
 [10:06:00] [info] 步骤 1: 读取 DEF
 [10:06:01] [info] 步骤 2: 转换为 GDSII 格式
 [10:06:05] [info] 写入 GDSII 文件...
-[10:06:30] [success] GDSII 生成完成! 输出: backend/result/picorv32.gds2 (87MB)
+[10:06:30] [success] GDSII 生成完成! 输出: artifacts/backend/picorv32.gds2 (87MB)
 ```
 
 ### 3.3 输出文件说明
 
 | 文件 | 大小 | 说明 | 查看方式 |
 |------|------|------|---------|
-| `backend/result/iFP_result.def` | 5.1MB | Floorplan DEF | `vim` / KLayout |
-| `backend/result/iPL_result.def` | 5.3MB | Placement DEF | `vim` / KLayout |
-| `backend/result/iCTS_result.def` | 5.3MB | CTS DEF | `vim` / KLayout |
-| `backend/result/iRT_result.def` | - | Routing DEF (如有) | `vim` / KLayout |
-| `backend/result/final_design.def` | 5.3MB | 最终 DEF | `vim` / KLayout |
-| `backend/result/final_design.v` | 1.5MB | 最终 Verilog 网表 | `vim` / `code` |
-| `backend/result/picorv32.gds2` | 87MB | GDSII 物理版图 | KLayout |
-| `backend/result/sta/picorv32.rpt` | 53KB | STA 时序报告 | `vim` / `code` |
-| `backend/result/sta/*.skew` | 14KB | 时钟偏斜报告 | `vim` / `code` |
+| `artifacts/backend/iFP_result.def` | 5.1MB | Floorplan DEF | `vim` / KLayout |
+| `artifacts/backend/iPL_result.def` | 5.3MB | Placement DEF | `vim` / KLayout |
+| `artifacts/backend/iCTS_result.def` | 5.3MB | CTS DEF | `vim` / KLayout |
+| `artifacts/backend/iRT_result.def` | - | Routing DEF (如有) | `vim` / KLayout |
+| `artifacts/backend/final_design.def` | 5.3MB | 最终 DEF | `vim` / KLayout |
+| `artifacts/backend/final_design.v` | 1.5MB | 最终 Verilog 网表 | `vim` / `code` |
+| `artifacts/backend/picorv32.gds2` | 87MB | GDSII 物理版图 | KLayout |
+| `artifacts/backend/sta/picorv32.rpt` | 53KB | STA 时序报告 | `vim` / `code` |
+| `artifacts/backend/sta/*.skew` | 14KB | 时钟偏斜报告 | `vim` / `code` |
 
 ### 3.4 查看结果
 
 ```bash
 # 查看 STA 报告
-cat backend/result/sta/picorv32.rpt | head -50
+cat artifacts/backend/sta/picorv32.rpt | head -50
 
 # 使用 KLayout 查看 GDSII
-klayout backend/result/picorv32.gds2
+klayout artifacts/backend/picorv32.gds2
 
 # 使用 KLayout 查看 DEF
-klayout backend/result/final_design.def
+klayout artifacts/backend/final_design.def
 ```
 
 ---
@@ -683,14 +683,14 @@ bash scripts/automation/run_full_flow.sh
 ========================================
 
 输出文件:
-- synthesis/results/picorv32_netlist.v
-- backend/result/iFP_result.def
-- backend/result/iPL_result.def
-- backend/result/iCTS_result.def
-- backend/result/final_design.def
-- backend/result/final_design.v
-- backend/result/picorv32.gds2
-- backend/result/sta/picorv32.rpt
+- artifacts/synthesis/picorv32_netlist.v
+- artifacts/backend/iFP_result.def
+- artifacts/backend/iPL_result.def
+- artifacts/backend/iCTS_result.def
+- artifacts/backend/final_design.def
+- artifacts/backend/final_design.v
+- artifacts/backend/picorv32.gds2
+- artifacts/backend/sta/picorv32.rpt
 ```
 
 ---

@@ -27,11 +27,17 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload
 PROJECT_ROOT = os.environ.get('PROJECT_ROOT', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 IEDA_BIN = os.environ.get('IEDA_BIN', os.path.expanduser('~/iEDA/scripts/design/sky130_gcd/iEDA'))
 PDK_ROOT = os.environ.get('PDK_ROOT', os.path.expanduser('~/.volare'))
+ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, 'artifacts')
+SYNTH_RESULT_DIR = os.path.join(ARTIFACTS_DIR, 'synthesis')
+BACKEND_RESULT_DIR = os.path.join(ARTIFACTS_DIR, 'backend')
+BACKEND_STA_DIR = os.path.join(BACKEND_RESULT_DIR, 'sta')
+TEMP_DIR = os.path.join(ARTIFACTS_DIR, 'temp')
 UPLOAD_DIR = os.path.join(PROJECT_ROOT, 'uploads')
 RTL_DIR = os.path.join(PROJECT_ROOT, 'rtl')
 FOOTPRINT_DIR = os.path.join(PROJECT_ROOT, 'kicad/footprints')
 SYMBOL_DIR = os.path.join(PROJECT_ROOT, 'kicad/symbols')
 
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIR, 'rtl'), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIR, 'packages'), exist_ok=True)
@@ -104,7 +110,7 @@ def detect_tools():
 
     # KiCad
     try:
-        r = subprocess.run(['kicad', '--version'], capture_output=True, text=True, timeout=5)
+        r = subprocess.run(['kicad-cli', 'version'], capture_output=True, text=True, timeout=5)
         tools['kicad']['status'] = 'ok'
         tools['kicad']['version'] = r.stdout.strip() if r.stdout else 'installed'
     except:
@@ -237,15 +243,15 @@ def run_floorplan():
     add_log("步骤 2.6: 放置 IO 端口和 Tap 单元", 'info', 'floorplan')
     add_log("", 'info', 'floorplan')
 
-    os.makedirs(os.path.join(PROJECT_ROOT, 'backend/result/report'), exist_ok=True)
-    os.makedirs(os.path.join(PROJECT_ROOT, 'backend/result/rt'), exist_ok=True)
-    os.makedirs(os.path.join(PROJECT_ROOT, 'backend/result/sta'), exist_ok=True)
+    os.makedirs(os.path.join(BACKEND_RESULT_DIR, 'report'), exist_ok=True)
+    os.makedirs(os.path.join(BACKEND_RESULT_DIR, 'rt'), exist_ok=True)
+    os.makedirs(os.path.join(BACKEND_RESULT_DIR, 'sta'), exist_ok=True)
 
     cmd = f'cd {PROJECT_ROOT} && {IEDA_BIN} -script backend/tcl/run_iFP.tcl'
     result = run_command(cmd, step='floorplan')
 
     with state_lock:
-        if os.path.exists(os.path.join(PROJECT_ROOT, 'backend/result/iFP_result.def')):
+        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iFP_result.def')):
             flow_state['steps']['floorplan']['status'] = 'done'
             flow_state['steps']['floorplan']['progress'] = 100
             add_log("Floorplan 完成!", 'success', 'floorplan')
@@ -272,7 +278,7 @@ def run_placement():
     result = run_command(cmd, step='placement')
 
     with state_lock:
-        if os.path.exists(os.path.join(PROJECT_ROOT, 'backend/result/iPL_result.def')):
+        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iPL_result.def')):
             flow_state['steps']['placement']['status'] = 'done'
             flow_state['steps']['placement']['progress'] = 100
             add_log("Placement 完成!", 'success', 'placement')
@@ -297,7 +303,7 @@ def run_cts():
     result = run_command(cmd, step='cts')
 
     with state_lock:
-        if os.path.exists(os.path.join(PROJECT_ROOT, 'backend/result/iCTS_result.def')):
+        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')):
             flow_state['steps']['cts']['status'] = 'done'
             flow_state['steps']['cts']['progress'] = 100
             add_log("CTS 完成!", 'success', 'cts')
@@ -323,7 +329,7 @@ def run_routing():
     result = run_command(cmd, step='routing')
 
     with state_lock:
-        if os.path.exists(os.path.join(PROJECT_ROOT, 'backend/result/iRT_result.def')):
+        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')):
             flow_state['steps']['routing']['status'] = 'done'
             flow_state['steps']['routing']['progress'] = 100
         else:
@@ -347,9 +353,9 @@ def run_sta():
     add_log("步骤 6.5: 生成时序报告", 'info', 'sta')
     add_log("", 'info', 'sta')
 
-    input_def = os.path.join(PROJECT_ROOT, 'backend/result/iRT_result.def')
+    input_def = os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')
     if not os.path.exists(input_def):
-        input_def = os.path.join(PROJECT_ROOT, 'backend/result/iCTS_result.def')
+        input_def = os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')
 
     cmd = f'cd {PROJECT_ROOT} && export INPUT_DEF={input_def} && {IEDA_BIN} -script backend/tcl/run_iSTA.tcl'
     result = run_command(cmd, step='sta')
@@ -373,15 +379,15 @@ def run_gdsii():
     add_log("步骤 7.2: 转换为 GDSII 格式", 'info', 'gdsii')
     add_log("", 'info', 'gdsii')
 
-    input_def = os.path.join(PROJECT_ROOT, 'backend/result/iRT_result.def')
+    input_def = os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')
     if not os.path.exists(input_def):
-        input_def = os.path.join(PROJECT_ROOT, 'backend/result/iCTS_result.def')
+        input_def = os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')
 
     cmd = f'cd {PROJECT_ROOT} && export INPUT_DEF={input_def} && {IEDA_BIN} -script backend/tcl/run_def_to_gds.tcl'
     result = run_command(cmd, step='gdsii')
 
     with state_lock:
-        if os.path.exists(os.path.join(PROJECT_ROOT, 'backend/result/picorv32.gds2')):
+        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'picorv32.gds2')):
             flow_state['steps']['gdsii']['status'] = 'done'
             flow_state['steps']['gdsii']['progress'] = 100
             add_log("GDSII 生成完成!", 'success', 'gdsii')
@@ -746,7 +752,7 @@ def api_output_files():
     }
 
     # 综合结果
-    synth_dir = os.path.join(PROJECT_ROOT, 'synthesis/results')
+    synth_dir = SYNTH_RESULT_DIR
     if os.path.isdir(synth_dir):
         for f in os.listdir(synth_dir):
             fp = os.path.join(synth_dir, f)
@@ -758,7 +764,7 @@ def api_output_files():
             })
 
     # 后端结果
-    result_dir = os.path.join(PROJECT_ROOT, 'backend/result')
+    result_dir = BACKEND_RESULT_DIR
     if os.path.isdir(result_dir):
         for f in os.listdir(result_dir):
             fp = os.path.join(result_dir, f)
@@ -771,7 +777,7 @@ def api_output_files():
                 })
 
     # STA 报告
-    sta_dir = os.path.join(PROJECT_ROOT, 'backend/result/sta')
+    sta_dir = BACKEND_STA_DIR
     if os.path.isdir(sta_dir):
         for f in os.listdir(sta_dir):
             fp = os.path.join(sta_dir, f)

@@ -298,9 +298,9 @@ bash synthesis/run_synth.sh
 bash backend/run_ieda.sh
 
 # 步骤 3: 查看结果
-ls synthesis/results/          # 综合网表
-ls backend/result/             # 后端版图
-klayout backend/result/picorv32.gds2  # 查看 GDSII
+ls artifacts/synthesis/          # 综合网表
+ls artifacts/backend/             # 后端版图
+klayout artifacts/backend/picorv32.gds2  # 查看 GDSII
 ```
 
 ---
@@ -445,13 +445,13 @@ curl -X POST http://localhost:5000/api/upload/mcp \
 
 | 阶段 | 输出文件 | 大小 | 查看方式 |
 |------|----------|------|----------|
-| 综合 | `synthesis/results/picorv32_netlist.v` | 839KB | Vim / VS Code |
-| 综合 | `synthesis/results/picorv32_netlist.json` | 2.9MB | Vim / VS Code |
-| Floorplan | `backend/result/iFP_result.def` | 5.1MB | KLayout |
-| Placement | `backend/result/iPL_result.def` | 5.3MB | KLayout |
-| CTS | `backend/result/iCTS_result.def` | 5.3MB | KLayout |
-| GDSII | `backend/result/picorv32.gds2` | 87MB | KLayout |
-| STA | `backend/result/sta/picorv32.rpt` | 53KB | Vim / VS Code |
+| 综合 | `artifacts/synthesis/picorv32_netlist.v` | 839KB | Vim / VS Code |
+| 综合 | `artifacts/synthesis/picorv32_netlist.json` | 2.9MB | Vim / VS Code |
+| Floorplan | `artifacts/backend/iFP_result.def` | 5.1MB | KLayout |
+| Placement | `artifacts/backend/iPL_result.def` | 5.3MB | KLayout |
+| CTS | `artifacts/backend/iCTS_result.def` | 5.3MB | KLayout |
+| GDSII | `artifacts/backend/picorv32.gds2` | 87MB | KLayout |
+| STA | `artifacts/backend/sta/picorv32.rpt` | 53KB | Vim / VS Code |
 | PCB | `kicad/test_board/test_board.kicad_pcb` | - | KiCad |
 
 ---

@@ -449,7 +449,7 @@ curl -X POST http://localhost:5000/api/upload/mcp \
                         html += `<div id="cat_${cat.key}" style="display:block;">`;
                         fileList.forEach(f=>{
                             const sizeStr = formatSize(f.size);
-                            const fp = f.path ? f.path + '/' + f.name : (cat.key === 'synthesis' ? 'synthesis/results/' : cat.key === 'sta' ? 'backend/result/sta/' : 'backend/result/') + f.name;
+                            const fp = f.path ? f.path + '/' + f.name : (cat.key === 'synthesis' ? 'artifacts/synthesis/' : cat.key === 'sta' ? 'artifacts/backend/sta/' : 'artifacts/backend/') + f.name;
                             html += `<div class="file-item" onclick="viewFile('${fp}')">
                                 <span class="fname" title="${f.name}">${f.name}</span>
                                 <span class="fsize">${sizeStr}</span>

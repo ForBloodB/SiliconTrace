@@ -55,14 +55,14 @@ kicad kicad/test_board/test_board.kicad_pcb
 
 ## 各阶段生成文件说明
 
-### 综合阶段 (synthesis/results/)
+### 综合阶段 (artifacts/synthesis/)
 | 文件 | 说明 | 查看方式 |
 |------|------|---------|
 | `picorv32_netlist.v` | 综合后 Verilog 网表 | `vim` / `code` |
 | `picorv32_netlist.json` | JSON 格式网表 | `vim` / `code` |
 | `picorv32.sdc` | 时序约束文件 | `vim` / `code` |
 
-### 后端阶段 (backend/result/)
+### 后端阶段 (artifacts/backend/)
 | 文件 | 说明 | 查看方式 |
 |------|------|---------|
 | `iFP_result.def` | Floorplan DEF 文件 | `vim` / KLayout |
@@ -101,7 +101,7 @@ kicad kicad/test_board/test_board.kicad_pcb
 ```bash
 sudo apt install klayout
 # 打开 GDSII 文件
-klayout backend/result/picorv32.gds2
+klayout artifacts/backend/picorv32.gds2
 ```
 
 ### GTKWave（查看仿真波形）

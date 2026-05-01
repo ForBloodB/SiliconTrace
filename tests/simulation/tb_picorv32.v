@@ -110,12 +110,12 @@ module tb_picorv32;
 
     // 加载测试程序
     initial begin
-        $readmemh("tests/simulation/test.hex", memory);
+        $readmemh("test.hex", memory);
     end
 
     // 主测试序列
     initial begin
-        $dumpfile("tests/simulation/tb_picorv32.vcd");
+        $dumpfile("tb_picorv32.vcd");
         $dumpvars(0, tb_picorv32);
 
         cycle_count = 0;

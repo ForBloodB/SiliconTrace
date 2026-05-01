@@ -5,18 +5,21 @@
 # 基于 iEDA sky130_gcd 参考设计改编
 # 使用 HD（高密度）标准单元库
 
+set -e
+
 #=============================================
 ## 路径设置
 #=============================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+ARTIFACTS_DIR="$PROJECT_ROOT/artifacts"
 IEDA_ROOT="$HOME/iEDA"
 IEDA_SCRIPT_DIR="$IEDA_ROOT/scripts/design/sky130_gcd"
 FOUNDRY_DIR="$IEDA_ROOT/scripts/foundry/sky130"
 IEDA_BIN="$IEDA_SCRIPT_DIR/iEDA"
 
 # 结果目录
-RESULT_DIR="$SCRIPT_DIR/result"
+RESULT_DIR="$ARTIFACTS_DIR/backend"
 mkdir -p "$RESULT_DIR/report" "$RESULT_DIR/feature" "$RESULT_DIR/cts" "$RESULT_DIR/sta" "$RESULT_DIR/rt"
 
 #=============================================
@@ -29,8 +32,8 @@ export TCL_SCRIPT_DIR="$IEDA_SCRIPT_DIR/script"
 
 export DESIGN_TOP="picorv32"
 export CUSTOM_TCL_DIR="$SCRIPT_DIR/tcl"
-export NETLIST_FILE="$PROJECT_ROOT/synthesis/results/picorv32_netlist.v"
-export SDC_FILE="$PROJECT_ROOT/synthesis/constraints/picorv32.sdc"
+export NETLIST_FILE="$ARTIFACTS_DIR/synthesis/picorv32_netlist.v"
+export SDC_FILE="$ARTIFACTS_DIR/synthesis/picorv32.sdc"
 
 # PicoRV32: 1000um x 1000um die, 10um margin (increased for routing)
 export DIE_AREA="0.0 0.0 1000.0 1000.0"

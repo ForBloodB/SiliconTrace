@@ -14,8 +14,8 @@ opt
 flatten
 opt
 
-# 将存储器（memory）展开为寄存器，避免 iEDA 解析 memory 数组失败
-memory_map
+# 运行完整 memory pass，收集并展开存储器，避免 iEDA 解析 memory 数组失败
+memory
 opt
 
 # 映射到标准单元
@@ -30,8 +30,8 @@ abc -liberty __PDK_LIB_PATH__
 clean
 
 # 输出网表（-noexpr 避免复杂位选择表达式，-noattr 去除属性注释）
-write_verilog -noattr -noexpr results/picorv32_netlist.v
-write_json results/picorv32_netlist.json
+write_verilog -noattr -noexpr __SYNTH_OUT_DIR__/picorv32_netlist.v
+write_json __SYNTH_OUT_DIR__/picorv32_netlist.json
 
 # 输出统计信息
 stat -liberty __PDK_LIB_PATH__
