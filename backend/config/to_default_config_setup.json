@@ -24,26 +24,31 @@
         }
     },
     "routing_tree": "flute",
-    "setup_target_slack": 0.0,
-    "hold_target_slack": 0.4,
-    "max_insert_instance_percent": 0.2,
+    "setup_target_slack": 0.1,
+    "hold_target_slack": 0.05,
+    "max_insert_instance_percent": 0.35,
     "max_core_utilization": 0.8,
-    "fix_fanout": false,
+    "fix_fanout": true,
     "optimize_drv": false,
     "optimize_hold": false,
     "optimize_setup": true,
     "DRV_insert_buffers": [
-        "sky130_fd_sc_hd__buf_8"
+        "sky130_fd_sc_hd__buf_12",
+        "sky130_fd_sc_hd__buf_8",
+        "sky130_fd_sc_hd__buf_6"
     ],
     "setup_insert_buffers": [
+        "sky130_fd_sc_hd__buf_16",
+        "sky130_fd_sc_hd__buf_12",
         "sky130_fd_sc_hd__buf_8"
     ],
     "hold_insert_buffers": [
-        "sky130_fd_sc_hd__buf_8"
+        "sky130_fd_sc_hd__buf_8",
+        "sky130_fd_sc_hd__buf_6"
     ],
     "number_of_decreasing_slack_iter": 5,
-    "max_allowed_buffering_fanout": 20,
-    "min_divide_fanout": 8,
+    "max_allowed_buffering_fanout": 16,
+    "min_divide_fanout": 4,
     "optimize_endpoints_percent": 1.0,
     "drv_optimize_iter_number": 5
 }

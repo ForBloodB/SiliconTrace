@@ -42,13 +42,27 @@ bash synthesis/run_synth.sh
 bash backend/run_ieda.sh
 ```
 
-### 3. 查看 KiCad 测试载板
+### 3. 运行第二个示例设计
 ```bash
-# 打开原理图
-kicad kicad/test_board/test_board.kicad_sch
+# 小型 blinky_counter 示例，用来验证流程不只支持 PicoRV32
+DESIGN_TOP=blinky_counter bash synthesis/run_synth.sh
+DESIGN_TOP=blinky_counter EXPORT_KICAD=0 bash backend/run_ieda.sh
 
-# 打开 PCB Layout
-kicad kicad/test_board/test_board.kicad_pcb
+# 验证 routing / STA 是否干净
+cat artifacts/backend/blinky_counter/rt/route_status.txt
+grep -E "clk[[:space:]]+\\|[[:space:]]+(max|min)" artifacts/backend/blinky_counter/sta/blinky_counter.rpt
+```
+
+### 4. 查看 KiCad 测试载板
+```bash
+# 后端流程会自动生成 KiCad 工程，也可以单独重新导出
+python3 backend/export_kicad.py
+
+# 打开生成的原理图
+kicad artifacts/kicad/picorv32_test_board/picorv32_test_board.kicad_sch
+
+# 打开生成的 PCB Layout
+kicad artifacts/kicad/picorv32_test_board/picorv32_test_board.kicad_pcb
 ```
 
 ---
@@ -68,7 +82,8 @@ kicad kicad/test_board/test_board.kicad_pcb
 | `iFP_result.def` | Floorplan DEF 文件 | `vim` / KLayout |
 | `iPL_result.def` | 布局 DEF 文件 | `vim` / KLayout |
 | `iCTS_result.def` | 时钟树 DEF 文件 | `vim` / KLayout |
-| `iRT_result.def` | 布线 DEF 文件（如有） | `vim` / KLayout |
+| `iRT_result.def` | 布线 DEF 文件（routing 完成后生成，DRC>0 时仍可用） | `vim` / KLayout |
+| `rt/route_status.txt` | Routing 成败与 DRC 数量 | `cat` |
 | `final_design.def` | 最终 DEF 文件 | `vim` / KLayout |
 | `final_design.v` | 最终 Verilog 网表 | `vim` / `code` |
 | `picorv32.gds2` | GDSII 物理版图 | KLayout |
@@ -76,9 +91,12 @@ kicad kicad/test_board/test_board.kicad_pcb
 | `sta/*.skew` | 时钟偏斜报告 | `vim` / `code` |
 | `report/*.rpt` | 各阶段数据库报告 | `vim` / `code` |
 
-### KiCad 文件 (kicad/)
+### KiCad 文件
 | 文件 | 说明 | 查看方式 |
 |------|------|---------|
+| `artifacts/kicad/picorv32_test_board/picorv32_test_board.kicad_sch` | 自动导出的原理图 | KiCad (kicad 命令) |
+| `artifacts/kicad/picorv32_test_board/picorv32_test_board.kicad_pcb` | 自动导出的 PCB Layout | KiCad (kicad 命令) |
+| `artifacts/kicad/picorv32_test_board/pin_map.csv` | symbol pin 到 PCB net 的映射 | `vim` / `code` |
 | `test_board/test_board.kicad_sch` | 原理图 | KiCad (kicad 命令) |
 | `test_board/test_board.kicad_pcb` | PCB Layout | KiCad (kicad 命令) |
 | `symbols/picorv32.kicad_sym` | PicoRV32 符号 | KiCad 符号编辑器 |
@@ -134,7 +152,7 @@ iEDA 后端
     ├── Floorplan (iFP) ──→ 布局规划
     ├── Placement (iPL) ──→ 标准单元布局
     ├── CTS (iCTS) ──→ 时钟树综合
-    ├── Routing (iRT) ──→ 布线（有 DRC 违例）
+    ├── Routing (iRT) ──→ 布线（route_status.txt 判定成败）
     ├── STA (iSTA) ──→ 静态时序分析
     └── GDSII ──→ 物理版图
     │
@@ -148,7 +166,7 @@ KiCad 测试载板
 
 ## 已知限制
 
-1. **Routing DRC 违例**：在 7.7GB 内存环境下，布线约有 5600 个 DRC 违例。需要更大内存或降低设计密度。
+1. **PicoRV32 Routing 尚未清零**：当前 PicoRV32 后端结果仍有 routing DRC（约 12K-15K），脚本会返回非零并输出 `iRT_result.def`（含 DRC 的 routed DEF）；STA/GDS 仍会使用该 DEF 生成结果（仅用于调试/展示，不代表 clean closure）；`blinky_counter` 示例已验证 routing DRC=0、STA max/min TNS=0。
 2. **SDC 约束简化**：iEDA STA 仅支持基本 SDC 命令。
 3. **单元库**：使用 HD（高密度）库，HS 库可能时序更优。
 

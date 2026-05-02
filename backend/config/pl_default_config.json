@@ -3,9 +3,9 @@
         "is_max_length_opt": 0,
         "max_length_constraint": 1000000,
         "is_timing_effort": 0,
-        "is_congestion_effort": 0,
-        "ignore_net_degree": 100,
-        "num_threads": 1,
+        "is_congestion_effort": 1,
+        "ignore_net_degree": 80,
+        "num_threads": 4,
         "info_iter_num": 10,
         "GP": {
             "Wirelength": {
@@ -14,16 +14,16 @@
                 "min_wirelength_force_bar": -300
             },
             "Density": {
-                "target_density": 0.3,
+                "target_density": 0.50,
                 "is_adaptive_bin": 1,
                 "bin_cnt_x": 128,
                 "bin_cnt_y": 128
             },
             "Nesterov": {
-                "max_iter": 2000,
+                "max_iter": 600,
                 "max_backtrack": 10,
                 "init_density_penalty": 0.00008,
-                "target_overflow": 0.1,
+                "target_overflow": 0.15,
                 "initial_prev_coordi_update_coef": 100,
                 "min_precondition": 1.0,
                 "min_phi_coef": 0.95,

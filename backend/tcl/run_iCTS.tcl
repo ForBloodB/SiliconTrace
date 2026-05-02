@@ -41,7 +41,11 @@ def_init -path $::env(RESULT_DIR)/iPL_result.def
 #===========================================================
 ##   run CTS
 #===========================================================
-run_cts -config $::env(CONFIG_DIR)/cts_default_config.json -work_dir $::env(RESULT_DIR)/cts
+set CTS_CONFIG "$::env(CONFIG_DIR)/cts_default_config.json"
+if {[info exists ::env(CTS_CONFIG)] && $::env(CTS_CONFIG) ne ""} {
+   set CTS_CONFIG $::env(CTS_CONFIG)
+}
+run_cts -config $CTS_CONFIG -work_dir $::env(RESULT_DIR)/cts
 
 #===========================================================
 ##   save def

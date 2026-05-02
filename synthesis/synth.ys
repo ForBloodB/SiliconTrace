@@ -1,12 +1,12 @@
-# Yosys 综合脚本 - PicoRV32
+# Yosys 综合脚本
 # 硅迹开源 (SiliconTrace Open)
 # 注意：此文件由 run_synth.sh 动态生成，请勿手动编辑
 
 # 读取 RTL
-read_verilog ../rtl/picorv32/picorv32.v
+read_verilog __RTL_FILE__
 
 # 设置顶层模块
-hierarchy -top picorv32
+hierarchy -top __DESIGN_TOP__
 
 # 过程优化
 proc
@@ -24,14 +24,14 @@ opt
 
 # 映射到 SKY130 标准单元库
 dfflibmap -liberty __PDK_LIB_PATH__
-abc -liberty __PDK_LIB_PATH__
+abc -liberty __PDK_LIB_PATH__ -D __ABC_DELAY_TARGET_PS__
 
 # 清理
 clean
 
 # 输出网表（-noexpr 避免复杂位选择表达式，-noattr 去除属性注释）
-write_verilog -noattr -noexpr __SYNTH_OUT_DIR__/picorv32_netlist.v
-write_json __SYNTH_OUT_DIR__/picorv32_netlist.json
+write_verilog -noattr -noexpr __SYNTH_NETLIST_OUT__
+write_json __SYNTH_JSON_OUT__
 
 # 输出统计信息
 stat -liberty __PDK_LIB_PATH__

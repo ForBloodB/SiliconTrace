@@ -34,10 +34,39 @@ source $::env(TCL_SCRIPT_DIR)/DB_script/db_init_sdc.tcl
 source $::env(TCL_SCRIPT_DIR)/DB_script/db_init_lef.tcl
 
 #===========================================================
+##   read spef when available
+#===========================================================
+if {[info exists ::env(SPEF_PATH)] && $::env(SPEF_PATH) ne ""} {
+    source $::env(TCL_SCRIPT_DIR)/DB_script/db_init_spef.tcl
+}
+
+#===========================================================
 ##   read def (from routing or CTS, depending on availability)
 #===========================================================
-set DEFAULT_INPUT_DEF "$::env(RESULT_DIR)/iRT_result.def"
-def_init -path [expr {[info exists ::env(INPUT_DEF)] ? $::env(INPUT_DEF) : $DEFAULT_INPUT_DEF}]
+set route_completed 0
+set route_status_path "$::env(RESULT_DIR)/rt/route_status.txt"
+if {[file exists $route_status_path]} {
+    set route_status_file [open $route_status_path r]
+    set route_status_data [read $route_status_file]
+    close $route_status_file
+    if {[string match "*status=success*" $route_status_data]} {
+        set route_completed 1
+    }
+}
+
+if {[info exists ::env(INPUT_DEF)]} {
+    set INPUT_DEF_PATH $::env(INPUT_DEF)
+} elseif {[file exists "$::env(RESULT_DIR)/iRT_result.def"]} {
+    # Use routed DEF if it exists (even with DRC violations, routing data is valid for STA)
+    set INPUT_DEF_PATH "$::env(RESULT_DIR)/iRT_result.def"
+} elseif {[file exists "$::env(RESULT_DIR)/iTO_setup_result.def"]} {
+    set INPUT_DEF_PATH "$::env(RESULT_DIR)/iTO_setup_result.def"
+} elseif {[file exists "$::env(RESULT_DIR)/iTO_hold_result.def"]} {
+    set INPUT_DEF_PATH "$::env(RESULT_DIR)/iTO_hold_result.def"
+} else {
+    set INPUT_DEF_PATH "$::env(RESULT_DIR)/iCTS_result.def"
+}
+def_init -path $INPUT_DEF_PATH
 
 #===========================================================
 ##   run STA

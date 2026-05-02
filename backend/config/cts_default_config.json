@@ -3,39 +3,42 @@
     "router_type": "GOCA",
     "delay_type": "elmore",
     "cluster_type": "kmeans",
-    "skew_bound": "0.08",
+    "skew_bound": "0.05",
     "max_buf_tran": "1.0",
     "max_sink_tran": "1.0",
     "max_cap": "0.15",
-    "max_fanout": "32",
+    "max_fanout": "20",
     "min_length": "50",
-    "max_length": "300",
+    "max_length": "220",
     "scale_size": 50,
-    "cluster_size": 32,
+    "cluster_size": 24,
     "routing_layer": [
         4,
         5
     ],
     "buffer_type": [
-        "sky130_fd_sc_hd__buf_1"
+        "sky130_fd_sc_hd__clkbuf_8",
+        "sky130_fd_sc_hd__clkbuf_4",
+        "sky130_fd_sc_hd__clkbuf_2",
+        "sky130_fd_sc_hd__clkbuf_1"
     ],
-    "root_buffer_type": "sky130_fd_sc_hd__buf_1",
-    "root_buffer_required": "OFF",
+    "root_buffer_type": "sky130_fd_sc_hd__clkbuf_8",
+    "root_buffer_required": "ON",
     "inherit_root": "OFF",
-    "break_long_wire": "OFF",
+    "break_long_wire": "ON",
     "level_max_length": [
-        "300",
-        "250"
+        "220",
+        "180"
     ],
     "level_max_fanout": [
-        32,
-        12
+        20,
+        10
     ],
     "level_max_cap": [
         "0.15"
     ],
     "level_skew_bound": [
-        "0.08"
+        "0.05"
     ],
     "level_cluster_ratio": [
         "1",

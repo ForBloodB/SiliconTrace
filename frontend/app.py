@@ -11,6 +11,7 @@ import subprocess
 import threading
 import time
 import shutil
+import shlex
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,7 @@ ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, 'artifacts')
 SYNTH_RESULT_DIR = os.path.join(ARTIFACTS_DIR, 'synthesis')
 BACKEND_RESULT_DIR = os.path.join(ARTIFACTS_DIR, 'backend')
 BACKEND_STA_DIR = os.path.join(BACKEND_RESULT_DIR, 'sta')
+KICAD_RESULT_DIR = os.path.join(ARTIFACTS_DIR, 'kicad', 'picorv32_test_board')
 TEMP_DIR = os.path.join(ARTIFACTS_DIR, 'temp')
 UPLOAD_DIR = os.path.join(PROJECT_ROOT, 'uploads')
 RTL_DIR = os.path.join(PROJECT_ROOT, 'rtl')
@@ -58,7 +60,7 @@ flow_state = {
         'routing': {'status': 'pending', 'name': 'Routing', 'tool': 'iEDA iRT', 'progress': 0, 'output': None, 'error': None, 'start': None, 'end': None},
         'sta': {'status': 'pending', 'name': 'STA', 'tool': 'iEDA iSTA', 'progress': 0, 'output': None, 'error': None, 'start': None, 'end': None},
         'gdsii': {'status': 'pending', 'name': 'GDSII', 'tool': 'iEDA GDS', 'progress': 0, 'output': None, 'error': None, 'start': None, 'end': None},
-        'kicad': {'status': 'pending', 'name': 'KiCad 检查', 'tool': 'KiCad', 'progress': 0, 'output': None, 'error': None, 'start': None, 'end': None},
+        'kicad': {'status': 'pending', 'name': 'KiCad 导出', 'tool': 'KiCad', 'progress': 0, 'output': None, 'error': None, 'start': None, 'end': None},
     },
     'tools': {
         'yosys': {'name': 'Yosys', 'version': 'checking...', 'status': 'unknown', 'path': 'yosys'},
@@ -82,6 +84,62 @@ def add_log(message, level='info', step=None):
     logs.append(log_entry)
     print(f"[{timestamp}] [{level}] {message}")
     return log_entry
+
+def route_status_path():
+    return os.path.join(BACKEND_RESULT_DIR, 'rt', 'route_status.txt')
+
+def route_completed():
+    status_file = route_status_path()
+    if not os.path.exists(status_file):
+        return False
+    try:
+        with open(status_file, 'r', encoding='utf-8') as f:
+            return 'status=success' in f.read()
+    except OSError:
+        return False
+
+def get_backend_input_def(prefer_route=True):
+    routed_def = os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')
+    setup_def = os.path.join(BACKEND_RESULT_DIR, 'iTO_setup_result.def')
+    hold_def = os.path.join(BACKEND_RESULT_DIR, 'iTO_hold_result.def')
+    cts_def = os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')
+    if prefer_route and route_completed() and os.path.exists(routed_def):
+        return routed_def
+    if os.path.exists(setup_def):
+        return setup_def
+    if os.path.exists(hold_def):
+        return hold_def
+    return cts_def
+
+def shell_quote(value):
+    return shlex.quote(str(value))
+
+def backend_env_exports(extra=None):
+    ieda_root = os.path.expanduser('~/iEDA')
+    ieda_script_dir = os.path.join(ieda_root, 'scripts', 'design', 'sky130_gcd')
+    foundry_dir = os.path.join(ieda_root, 'scripts', 'foundry', 'sky130')
+    env = {
+        'CONFIG_DIR': os.path.join(PROJECT_ROOT, 'backend', 'config'),
+        'FOUNDRY_DIR': foundry_dir,
+        'RESULT_DIR': BACKEND_RESULT_DIR,
+        'TCL_SCRIPT_DIR': os.path.join(ieda_script_dir, 'script'),
+        'DESIGN_TOP': 'picorv32',
+        'CUSTOM_TCL_DIR': os.path.join(PROJECT_ROOT, 'backend', 'tcl'),
+        'NETLIST_FILE': os.path.join(SYNTH_RESULT_DIR, 'picorv32_netlist.v'),
+        'SDC_FILE': os.path.join(SYNTH_RESULT_DIR, 'picorv32.sdc'),
+        'DIE_AREA': os.environ.get('DIE_AREA', '0.0 0.0 500.0 500.0'),
+        'CORE_AREA': os.environ.get('CORE_AREA', '20.0 20.0 480.0 480.0'),
+    }
+    if extra:
+        env.update(extra)
+    return ' '.join(f'export {key}={shell_quote(value)};' for key, value in env.items())
+
+def ieda_cmd(tcl_script, extra_env=None):
+    return (
+        f'cd {shell_quote(PROJECT_ROOT)} && '
+        f'{backend_env_exports(extra_env)} '
+        f'{shell_quote(IEDA_BIN)} -script {shell_quote(tcl_script)}'
+    )
 
 # ============================================================
 # 工具链检测
@@ -200,7 +258,7 @@ def run_synthesis(rtl_file=None):
         flow_state['steps']['synthesis']['start'] = datetime.now().isoformat()
         flow_state['current_step'] = 'synthesis'
 
-    add_log("━━━ [1/7] Yosys 综合 ━━━━━━━━━━━━━━━━━━━━━━━", 'header', 'synthesis')
+    add_log("━━━ [1/8] Yosys 综合 ━━━━━━━━━━━━━━━━━━━━━━━", 'header', 'synthesis')
     add_log("工具: Yosys (开源综合工具)", 'info', 'synthesis')
     add_log("输入: RTL Verilog 源码", 'info', 'synthesis')
     add_log("输出: 门级网表 (.v) + 约束 (.sdc)", 'info', 'synthesis')
@@ -231,7 +289,7 @@ def run_floorplan():
     """运行 Floorplan"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [2/7] Floorplan (布局规划) ━━━━━━━━━━━━━━", 'header', 'floorplan')
+    add_log("━━━ [2/8] Floorplan (布局规划) ━━━━━━━━━━━━━━", 'header', 'floorplan')
     add_log("工具: iEDA iFP (布局规划引擎)", 'info', 'floorplan')
     add_log("功能: 创建芯片布局区域、电源网络、IO 端口", 'info', 'floorplan')
     add_log("", 'info', 'floorplan')
@@ -247,7 +305,7 @@ def run_floorplan():
     os.makedirs(os.path.join(BACKEND_RESULT_DIR, 'rt'), exist_ok=True)
     os.makedirs(os.path.join(BACKEND_RESULT_DIR, 'sta'), exist_ok=True)
 
-    cmd = f'cd {PROJECT_ROOT} && {IEDA_BIN} -script backend/tcl/run_iFP.tcl'
+    cmd = ieda_cmd('backend/tcl/run_iFP.tcl')
     result = run_command(cmd, step='floorplan')
 
     with state_lock:
@@ -264,7 +322,7 @@ def run_placement():
     """运行 Placement"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [3/7] Placement (布局) ━━━━━━━━━━━━━━━━━━", 'header', 'placement')
+    add_log("━━━ [3/8] Placement (布局) ━━━━━━━━━━━━━━━━━━", 'header', 'placement')
     add_log("工具: iEDA iPL (布局引擎)", 'info', 'placement')
     add_log("功能: 将标准单元放置到布局区域内", 'info', 'placement')
     add_log("", 'info', 'placement')
@@ -274,7 +332,7 @@ def run_placement():
     add_log("步骤 3.4: 插入填充单元 (Filler)", 'info', 'placement')
     add_log("", 'info', 'placement')
 
-    cmd = f'cd {PROJECT_ROOT} && {IEDA_BIN} -script backend/tcl/run_iPL.tcl'
+    cmd = ieda_cmd('backend/tcl/run_iPL.tcl')
     result = run_command(cmd, step='placement')
 
     with state_lock:
@@ -289,7 +347,7 @@ def run_cts():
     """运行 CTS"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [4/7] CTS (时钟树综合) ━━━━━━━━━━━━━━━━━", 'header', 'cts')
+    add_log("━━━ [4/8] CTS (时钟树综合) ━━━━━━━━━━━━━━━━━", 'header', 'cts')
     add_log("工具: iEDA iCTS (时钟树引擎)", 'info', 'cts')
     add_log("功能: 构建平衡的时钟分配网络", 'info', 'cts')
     add_log("", 'info', 'cts')
@@ -299,7 +357,7 @@ def run_cts():
     add_log("步骤 4.4: 时钟树平衡", 'info', 'cts')
     add_log("", 'info', 'cts')
 
-    cmd = f'cd {PROJECT_ROOT} && {IEDA_BIN} -script backend/tcl/run_iCTS.tcl'
+    cmd = ieda_cmd('backend/tcl/run_iCTS.tcl')
     result = run_command(cmd, step='cts')
 
     with state_lock:
@@ -314,27 +372,28 @@ def run_routing():
     """运行 Routing"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [5/7] Routing (布线) ━━━━━━━━━━━━━━━━━━━", 'header', 'routing')
+    add_log("━━━ [5/8] Routing (布线) ━━━━━━━━━━━━━━━━━━━", 'header', 'routing')
     add_log("工具: iEDA iRT (布线引擎)", 'info', 'routing')
     add_log("功能: 完成信号线的物理连接", 'info', 'routing')
     add_log("", 'info', 'routing')
-    add_log("步骤 5.1: 读取 CTS DEF", 'info', 'routing')
-    add_log("步骤 5.2: 初始化布线器 (met1-met4, 4线程)", 'info', 'routing')
+    add_log("步骤 5.1: 读取优化后的 DEF", 'info', 'routing')
+    add_log("步骤 5.2: 初始化布线器 (met1-met5, 4线程)", 'info', 'routing')
     add_log("步骤 5.3: 全局布线 (Global Routing)", 'info', 'routing')
     add_log("步骤 5.4: 详细布线 (Detailed Routing)", 'info', 'routing')
     add_log("步骤 5.5: DRC 检查和修复", 'info', 'routing')
     add_log("", 'info', 'routing')
 
-    cmd = f'cd {PROJECT_ROOT} && {IEDA_BIN} -script backend/tcl/run_iRT.tcl'
+    input_def = get_backend_input_def(prefer_route=False)
+    cmd = ieda_cmd('backend/tcl/run_iRT.tcl', {'INPUT_DEF': input_def})
     result = run_command(cmd, step='routing')
 
     with state_lock:
-        if os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')):
+        if route_completed() and os.path.exists(os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')):
             flow_state['steps']['routing']['status'] = 'done'
             flow_state['steps']['routing']['progress'] = 100
         else:
             flow_state['steps']['routing']['status'] = 'warning'
-            add_log("Routing 有 DRC 迭代问题 (内存限制)，使用 CTS 结果继续", 'warning', 'routing')
+            add_log("Routing 未完成，请查看 artifacts/backend/rt/rt.log；当前使用 iTO_setup 结果继续", 'warning', 'routing')
         flow_state['running'] = False
     return result
 
@@ -342,7 +401,7 @@ def run_sta():
     """运行 STA"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [6/7] STA (静态时序分析) ━━━━━━━━━━━━━━━", 'header', 'sta')
+    add_log("━━━ [6/8] STA (静态时序分析) ━━━━━━━━━━━━━━━", 'header', 'sta')
     add_log("工具: iEDA iSTA (时序分析引擎)", 'info', 'sta')
     add_log("功能: 检查设计是否满足时序约束", 'info', 'sta')
     add_log("", 'info', 'sta')
@@ -353,11 +412,9 @@ def run_sta():
     add_log("步骤 6.5: 生成时序报告", 'info', 'sta')
     add_log("", 'info', 'sta')
 
-    input_def = os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')
-    if not os.path.exists(input_def):
-        input_def = os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')
+    input_def = get_backend_input_def(prefer_route=True)
 
-    cmd = f'cd {PROJECT_ROOT} && export INPUT_DEF={input_def} && {IEDA_BIN} -script backend/tcl/run_iSTA.tcl'
+    cmd = ieda_cmd('backend/tcl/run_iSTA.tcl', {'INPUT_DEF': input_def})
     result = run_command(cmd, step='sta')
 
     with state_lock:
@@ -371,7 +428,7 @@ def run_gdsii():
     """生成 GDSII"""
     with state_lock:
         flow_state['running'] = True
-    add_log("━━━ [7/7] GDSII (物理版图) ━━━━━━━━━━━━━━━━━", 'header', 'gdsii')
+    add_log("━━━ [7/8] GDSII (物理版图) ━━━━━━━━━━━━━━━━━", 'header', 'gdsii')
     add_log("工具: iEDA GDS 转换器", 'info', 'gdsii')
     add_log("功能: 生成制造用 GDSII 物理版图文件", 'info', 'gdsii')
     add_log("", 'info', 'gdsii')
@@ -379,11 +436,9 @@ def run_gdsii():
     add_log("步骤 7.2: 转换为 GDSII 格式", 'info', 'gdsii')
     add_log("", 'info', 'gdsii')
 
-    input_def = os.path.join(BACKEND_RESULT_DIR, 'iRT_result.def')
-    if not os.path.exists(input_def):
-        input_def = os.path.join(BACKEND_RESULT_DIR, 'iCTS_result.def')
+    input_def = get_backend_input_def(prefer_route=True)
 
-    cmd = f'cd {PROJECT_ROOT} && export INPUT_DEF={input_def} && {IEDA_BIN} -script backend/tcl/run_def_to_gds.tcl'
+    cmd = ieda_cmd('backend/tcl/run_def_to_gds.tcl', {'INPUT_DEF': input_def})
     result = run_command(cmd, step='gdsii')
 
     with state_lock:
@@ -404,7 +459,7 @@ def run_full_flow():
             flow_state['steps'][s]['error'] = None
 
     add_log("╔══════════════════════════════════════════════╗", 'header')
-    add_log("║    硅迹开源 - RTL → GDSII 全流程              ║", 'header')
+    add_log("║    硅迹开源 - RTL → GDSII → KiCad 全流程       ║", 'header')
     add_log("╚══════════════════════════════════════════════╝", 'header')
     add_log("", 'info')
 
@@ -416,6 +471,7 @@ def run_full_flow():
         ("Routing", run_routing),
         ("STA", run_sta),
         ("GDSII", run_gdsii),
+        ("KiCad", run_kicad_check),
     ]
 
     for name, func in steps:
@@ -431,27 +487,42 @@ def run_full_flow():
     return {'success': True}
 
 def run_kicad_check():
-    """检查 KiCad 文件"""
-    add_log("━━━ KiCad 测试载板检查 ━━━━━━━━━━━━━━━━━━━━━", 'header', 'kicad')
+    """导出并检查 KiCad 文件"""
+    with state_lock:
+        flow_state['running'] = True
+    add_log("━━━ [8/8] KiCad 工程导出 ━━━━━━━━━━━━━━━━━━━", 'header', 'kicad')
+    add_log("工具: SiliconTrace KiCad Exporter", 'info', 'kicad')
+    add_log("功能: 生成可复现的 KiCad 工程、局部库和引脚映射", 'info', 'kicad')
+    add_log("", 'info', 'kicad')
+
+    cmd = f'cd {shell_quote(PROJECT_ROOT)} && python3 backend/export_kicad.py'
+    result = run_command(cmd, step='kicad')
+
     files = {
-        '原理图': 'kicad/test_board/test_board.kicad_sch',
-        'PCB Layout': 'kicad/test_board/test_board.kicad_pcb',
-        'PicoRV32 符号': 'kicad/symbols/picorv32.kicad_sym',
-        'QFN-48 封装': 'kicad/footprints/QFN-48_7x7mm_P0.5mm.kicad_mod',
+        '工程': os.path.join(KICAD_RESULT_DIR, 'picorv32_test_board.kicad_pro'),
+        '原理图': os.path.join(KICAD_RESULT_DIR, 'picorv32_test_board.kicad_sch'),
+        'PCB Layout': os.path.join(KICAD_RESULT_DIR, 'picorv32_test_board.kicad_pcb'),
+        'KiCad 符号库': os.path.join(KICAD_RESULT_DIR, 'symbols', 'kicad.kicad_sym'),
+        'Power 符号库': os.path.join(KICAD_RESULT_DIR, 'symbols', 'power.kicad_sym'),
+        'QFN-48 封装': os.path.join(KICAD_RESULT_DIR, 'footprints.pretty', 'QFN-48_7x7mm_P0.5mm.kicad_mod'),
+        '引脚映射': os.path.join(KICAD_RESULT_DIR, 'pin_map.csv'),
+        '导出清单': os.path.join(KICAD_RESULT_DIR, 'manifest.json'),
     }
-    all_ok = True
+    all_ok = result.get('success', False)
     for name, path in files.items():
-        full_path = os.path.join(PROJECT_ROOT, path)
+        full_path = path if os.path.isabs(path) else os.path.join(PROJECT_ROOT, path)
+        rel_path = os.path.relpath(full_path, PROJECT_ROOT)
         if os.path.exists(full_path):
             size = os.path.getsize(full_path)
-            add_log(f"  ✓ {name}: {path} ({size} bytes)", 'success', 'kicad')
+            add_log(f"  ✓ {name}: {rel_path} ({size} bytes)", 'success', 'kicad')
         else:
-            add_log(f"  ✗ {name}: {path} (不存在)", 'error', 'kicad')
+            add_log(f"  ✗ {name}: {rel_path} (不存在)", 'error', 'kicad')
             all_ok = False
 
     with state_lock:
         flow_state['steps']['kicad']['status'] = 'done' if all_ok else 'error'
         flow_state['steps']['kicad']['progress'] = 100
+        flow_state['running'] = False
     return {'success': all_ok}
 
 # ============================================================
@@ -580,7 +651,7 @@ def api_command():
         'sta': run_sta, '时序分析': run_sta, 'timing': run_sta,
         'gdsii': run_gdsii, 'gds': run_gdsii,
         '全流程': run_full_flow, 'full flow': run_full_flow, 'run all': run_full_flow, 'rtl2gds': run_full_flow,
-        'kicad': run_kicad_check, 'check kicad': run_kicad_check,
+        'kicad': run_kicad_check, 'check kicad': run_kicad_check, 'export kicad': run_kicad_check,
         'status': lambda: {'success': True}, '状态': lambda: {'success': True},
     }
 
@@ -790,6 +861,20 @@ def api_output_files():
                 })
 
     # KiCad 文件
+    generated_kicad_root = os.path.join(ARTIFACTS_DIR, 'kicad')
+    if os.path.isdir(generated_kicad_root):
+        for root, _, names in os.walk(generated_kicad_root):
+            for f in names:
+                fp = os.path.join(root, f)
+                if os.path.isfile(fp):
+                    files['kicad'].append({
+                        'name': f,
+                        'path': os.path.relpath(root, PROJECT_ROOT),
+                        'size': os.path.getsize(fp),
+                        'time': datetime.fromtimestamp(os.path.getmtime(fp)).isoformat(),
+                        'type': os.path.splitext(f)[1]
+                    })
+
     for subdir, key in [('kicad/test_board', 'kicad'), ('kicad/symbols', 'kicad'), ('kicad/footprints', 'kicad')]:
         d = os.path.join(PROJECT_ROOT, subdir)
         if os.path.isdir(d):
@@ -901,8 +986,8 @@ def api_help():
             'routing/rt/布线': '运行 iEDA Routing，信号布线',
             'sta/时序分析': '运行 iEDA STA，静态时序分析',
             'gdsii/gds': '生成 GDSII 物理版图',
-            '全流程/full flow': '运行完整 RTL→GDSII 流程',
-            'kicad': '检查 KiCad 测试载板文件',
+            '全流程/full flow': '运行完整 RTL→GDSII→KiCad 流程',
+            'kicad': '导出 KiCad 工程并检查生成文件',
             'status/状态': '查看项目状态',
         },
         'upload': {
