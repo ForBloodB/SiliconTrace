@@ -17,7 +17,11 @@ if {[info exists ::env(INPUT_DEF)]} {
 }
 def_init -path $INPUT_DEF_PATH
 
-run_to_hold -config $::env(CONFIG_DIR)/to_default_config_hold.json
+set TO_HOLD_CONFIG "$::env(CONFIG_DIR)/to_default_config_hold.json"
+if {[info exists ::env(TO_HOLD_CONFIG)] && $::env(TO_HOLD_CONFIG) ne ""} {
+    set TO_HOLD_CONFIG $::env(TO_HOLD_CONFIG)
+}
+run_to_hold -config $TO_HOLD_CONFIG
 feature_tool -path $::env(RESULT_DIR)/feature/ito_opthold.json -step optHold
 
 if {[info exists ::env(OUTPUT_DEF)]} {

@@ -17,7 +17,11 @@ if {[info exists ::env(INPUT_DEF)]} {
 }
 def_init -path $INPUT_DEF_PATH
 
-run_to_drv -config $::env(CONFIG_DIR)/to_default_config_drv.json
+set TO_DRV_CONFIG "$::env(CONFIG_DIR)/to_default_config_drv.json"
+if {[info exists ::env(TO_DRV_CONFIG)] && $::env(TO_DRV_CONFIG) ne ""} {
+    set TO_DRV_CONFIG $::env(TO_DRV_CONFIG)
+}
+run_to_drv -config $TO_DRV_CONFIG
 feature_tool -path $::env(RESULT_DIR)/feature/ito_optDrv.json -step optDrv
 
 if {[info exists ::env(OUTPUT_DEF)]} {

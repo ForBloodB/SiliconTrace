@@ -1,0 +1,26 @@
+DESIGN_NAME: picorv32
+VERILOG_FILES: dir::src/*.v
+CLOCK_PORT: clk
+CLOCK_PERIOD: 10
+PNR_SDC_FILE: dir::src/picorv32.sdc
+SIGNOFF_SDC_FILE: dir::src/picorv32.sdc
+
+# Conservative floorplan/routing settings verified clean for SKY130 signoff.
+FP_CORE_UTIL: 8
+PL_TARGET_DENSITY: 0.18
+DIE_AREA: [0, 0, 1200, 1200]
+FP_PDN_MULTILAYER: false
+RT_MAX_LAYER: met5
+DRT_ANTENNA_REPAIR_ITERS: 0
+
+# Keep filler insertion DRC-clean: decap fillers caused Magic LI spacing errors.
+DECAP_CELLS: []
+FILL_CELLS:
+  - sky130_fd_sc_hd__fill_2
+  - sky130_fd_sc_hd__fill_1
+
+PRIMARY_GDSII_STREAMOUT_TOOL: magic
+MAGIC_DEF_NO_BLOCKAGES: true
+MAGIC_EXT_USE_GDS: false
+MAGIC_EXT_ABSTRACT: true
+MAGIC_EXT_UNIQUE: none

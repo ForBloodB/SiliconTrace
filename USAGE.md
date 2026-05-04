@@ -53,7 +53,92 @@ cat artifacts/backend/blinky_counter/rt/route_status.txt
 grep -E "clk[[:space:]]+\\|[[:space:]]+(max|min)" artifacts/backend/blinky_counter/sta/blinky_counter.rpt
 ```
 
-### 4. 查看 KiCad 测试载板
+### 4. 使用 OpenROAD/LibreLane 做 routing DRC closure
+
+iEDA 后端可用于学习完整流程；如果目标是先把 routing DRC 降到 0，可以使用仓库中的 OpenROAD/LibreLane 配置。当前已验证：
+
+- SERV + SKY130 + OpenROAD：routing DRC = 0
+- PicoRV32 + SKY130 + OpenROAD：routing DRC = 0
+
+#### 4.1 准备环境
+
+```bash
+cd ~/SiliconTrace_Open
+
+export LL_BIN="$PWD/artifacts/librelane/bin"
+export OR_ENV="$PWD/artifacts/tools/openroad-env/bin"
+export PDK_ROOT="$PWD/artifacts/librelane/pdk_sky130"
+export PYTHONPATH="$PWD/artifacts/librelane/python_patch:${PYTHONPATH:-}"
+export PATH="$LL_BIN:$OR_ENV:$PATH"
+```
+
+说明：
+
+- `artifacts/librelane/bin/openroad` 指向本仓库的兼容 wrapper，用来适配旧 OpenROAD 与 LibreLane 3.x 的命令差异。
+- `artifacts/librelane/bin/yosys` 指向 pyosys wrapper，用来绕过系统 Yosys 过旧、不支持 `yosys -y` 的问题。
+- `artifacts/librelane/python_patch/sitecustomize.py` 用 `tclsh` 替代缺失的 `tkinter.Tcl()`。
+
+#### 4.2 运行 SERV/SKY130
+
+```bash
+/usr/bin/python3 -m librelane \
+  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
+  --run-tag sky130_test \
+  -S OpenROAD.STAPrePNR \
+  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
+  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
+  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
+  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
+  -T OpenROAD.DetailedRouting \
+  artifacts/librelane/serv_sky130/config.yaml
+```
+
+结果目录：
+
+```bash
+artifacts/librelane/serv_sky130/runs/sky130_test/final/
+```
+
+#### 4.3 运行 PicoRV32/SKY130
+
+```bash
+/usr/bin/python3 -m librelane \
+  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
+  --run-tag sky130_picorv32 \
+  -S OpenROAD.STAPrePNR \
+  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
+  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
+  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
+  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
+  -T OpenROAD.DetailedRouting \
+  artifacts/librelane/picorv32_sky130/config.yaml
+```
+
+结果目录：
+
+```bash
+artifacts/librelane/picorv32_sky130/runs/sky130_picorv32/final/
+```
+
+#### 4.4 检查 DRC 结果
+
+```bash
+# 查看 detailed routing 是否出现 0 violations
+grep -R "Number of violations = 0" \
+  artifacts/librelane/*_sky130/runs/*/*-openroad-detailedrouting/openroad-detailedrouting.log
+
+# .drc 文件为空代表 OpenROAD routing DRC report 没有违规
+find artifacts/librelane/*_sky130/runs -name '*.drc' -size 0 -print
+
+# 查看 final views
+find artifacts/librelane/*_sky130/runs/*/final -maxdepth 2 -type f
+```
+
+如果旧 OpenROAD 在 detailed routing 后写 views 阶段返回非零，但日志已经显示 `Number of violations = 0` 且 `.drc` 为空，可以用已生成的 routed DEF/ODB/netlist 补齐 state 后单独运行 LibreLane `Checker.TrDRC` 做流程内确认。SERV 和 PicoRV32 当前结果均已用 `Checker.TrDRC` 确认通过。
+
+> 注意：这里的 DRC=0 指 OpenROAD/TritonRoute routing DRC。完整 signoff 仍需要继续运行 Magic/KLayout DRC、XOR、LVS 等步骤。
+
+### 5. 查看 KiCad 测试载板
 ```bash
 # 后端流程会自动生成 KiCad 工程，也可以单独重新导出
 python3 backend/export_kicad.py

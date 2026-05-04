@@ -201,6 +201,7 @@ SiliconTrace_Open/
 |------|------|------|----------|
 | **Yosys** | RTL 综合 (Verilog → 门级网表) | 0.64+ | ISC |
 | **iEDA** | 国产开源数字后端平台 | Latest | Apache 2.0 |
+| **OpenROAD / LibreLane** | 开源数字后端流程，用于 DRC closure 实验 | LibreLane 3.x / OpenROAD | BSD / Apache 2.0 |
 | **KiCad** | 开源 PCB 设计 | 6.0+ | GPL |
 | **SKY130 PDK** | SkyWater 130nm 工艺设计套件 | sky130A | Apache 2.0 |
 | **Volare** | PDK 版本管理工具 | 0.20+ | MIT |
@@ -302,6 +303,68 @@ ls artifacts/synthesis/          # 综合网表
 ls artifacts/backend/             # 后端版图
 klayout artifacts/backend/picorv32.gds2  # 查看 GDSII
 ```
+
+#### 8. 使用 OpenROAD/LibreLane 跑 routing DRC closure
+
+当 iEDA 布线 DRC 较高时，可以使用 OpenROAD/LibreLane 作为后端验证路线。当前仓库已经保留了 SERV 与 PicoRV32 的 SKY130 LibreLane 配置，目标是先让 routing DRC=0，再考虑频率和面积。
+
+准备环境变量：
+
+```bash
+cd ~/SiliconTrace_Open
+export LL_BIN="$PWD/artifacts/librelane/bin"
+export OR_ENV="$PWD/artifacts/tools/openroad-env/bin"
+export PDK_ROOT="$PWD/artifacts/librelane/pdk_sky130"
+export PYTHONPATH="$PWD/artifacts/librelane/python_patch:${PYTHONPATH:-}"
+export PATH="$LL_BIN:$OR_ENV:$PATH"
+```
+
+运行 SERV 到 detailed routing：
+
+```bash
+/usr/bin/python3 -m librelane \
+  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
+  --run-tag sky130_test \
+  -S OpenROAD.STAPrePNR \
+  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
+  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
+  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
+  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
+  -T OpenROAD.DetailedRouting \
+  artifacts/librelane/serv_sky130/config.yaml
+```
+
+运行 PicoRV32 到 detailed routing：
+
+```bash
+/usr/bin/python3 -m librelane \
+  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
+  --run-tag sky130_picorv32 \
+  -S OpenROAD.STAPrePNR \
+  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
+  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
+  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
+  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
+  -T OpenROAD.DetailedRouting \
+  artifacts/librelane/picorv32_sky130/config.yaml
+```
+
+判断结果：
+
+```bash
+# detailed routing 日志中应出现 Number of violations = 0
+grep -R "Number of violations = 0" artifacts/librelane/*_sky130/runs/*/*-openroad-detailedrouting/openroad-detailedrouting.log
+
+# OpenROAD 输出的 .drc 文件为空代表 routing DRC 为 0
+find artifacts/librelane/*_sky130/runs -name '*.drc' -size 0 -print
+```
+
+已验证结果：
+
+- SERV + SKY130 + OpenROAD：routing DRC = 0
+- PicoRV32 + SKY130 + OpenROAD：routing DRC = 0
+
+> 注意：这里确认的是 OpenROAD/TritonRoute routing DRC 和 LibreLane `Checker.TrDRC`，不是完整 signoff DRC/LVS。完整 tapeout 前仍需继续跑 Magic/KLayout DRC、XOR 和 LVS。
 
 ---
 

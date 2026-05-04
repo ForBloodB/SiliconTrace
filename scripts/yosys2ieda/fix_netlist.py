@@ -83,6 +83,32 @@ def expand_concat_assign(line):
     return result
 
 
+def expand_partial_assign(line):
+    """展开部分位赋值: assign a[1:0] = b[1:0]; => assign a[0] = b[0]; assign a[1] = b[1];"""
+    m = re.match(r'\s*assign\s+(.+?)\[(\d+):(\d+)\]\s*=\s*(.+?)\[(\d+):(\d+)\]\s*;', line)
+    if not m:
+        return [line]
+
+    lhs_name = m.group(1).strip()
+    lhs_hi = int(m.group(2))
+    lhs_lo = int(m.group(3))
+    rhs_name = m.group(4).strip()
+    rhs_hi = int(m.group(5))
+    rhs_lo = int(m.group(6))
+
+    if lhs_hi - lhs_lo != rhs_hi - rhs_lo:
+        return [line]
+
+    result = []
+    if lhs_hi >= lhs_lo:
+        for i, j in zip(range(lhs_hi, lhs_lo - 1, -1), range(rhs_hi, rhs_lo - 1, -1)):
+            result.append(f"  assign {lhs_name}[{i}] = {rhs_name}[{j}];\n")
+    else:
+        for i, j in zip(range(lhs_hi, lhs_lo + 1, 1), range(rhs_hi, rhs_lo + 1, 1)):
+            result.append(f"  assign {lhs_name}[{i}] = {rhs_name}[{j}];\n")
+    return result
+
+
 def fix_netlist(input_file, output_file):
     with open(input_file, 'r') as f:
         lines = f.readlines()
@@ -92,6 +118,13 @@ def fix_netlist(input_file, output_file):
     for line in lines:
         if 'assign {' in line and '} = {' in line:
             expanded = expand_concat_assign(line)
+            if len(expanded) > 1:
+                changed += 1
+                output.extend(expanded)
+            else:
+                output.append(line)
+        elif re.match(r'\s*assign\s+.+\[\d+:\d+\]\s*=\s*.+\[\d+:\d+\]\s*;', line):
+            expanded = expand_partial_assign(line)
             if len(expanded) > 1:
                 changed += 1
                 output.extend(expanded)

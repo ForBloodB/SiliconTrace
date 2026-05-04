@@ -15,7 +15,22 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 ARTIFACTS_DIR="$PROJECT_ROOT/artifacts"
 IEDA_ROOT="$HOME/iEDA"
 IEDA_SCRIPT_DIR="$IEDA_ROOT/scripts/design/sky130_gcd"
-FOUNDRY_DIR="$IEDA_ROOT/scripts/foundry/sky130"
+BACKEND_PDK="${BACKEND_PDK:-sky130}"
+case "$BACKEND_PDK" in
+    sky130)
+        FOUNDRY_DIR="$IEDA_ROOT/scripts/foundry/sky130"
+        PDK_LIB_FILE="$FOUNDRY_DIR/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"
+        ;;
+    gf180)
+        GF180_PDK_ROOT="${GF180_PDK_ROOT:-$HOME/open_pdks/gf180mcu/gf180mcuD}"
+        FOUNDRY_DIR="${GF180_FOUNDRY_DIR:-$GF180_PDK_ROOT/libs.ref/gf180mcu_fd_sc_mcu7t5v0}"
+        PDK_LIB_FILE="$FOUNDRY_DIR/lib/gf180mcu_fd_sc_mcu7t5v0__tt_025C_1v80.lib"
+        ;;
+    *)
+        echo "错误: BACKEND_PDK=$BACKEND_PDK 无效，应为 sky130 或 gf180"
+        exit 1
+        ;;
+esac
 IEDA_BIN="$IEDA_SCRIPT_DIR/iEDA"
 
 #=============================================
@@ -32,6 +47,7 @@ fi
 mkdir -p "$RESULT_DIR/report" "$RESULT_DIR/feature" "$RESULT_DIR/cts" "$RESULT_DIR/sta" "$RESULT_DIR/rt"
 
 export CONFIG_DIR="$SCRIPT_DIR/config"
+export BACKEND_PDK
 export FOUNDRY_DIR="$FOUNDRY_DIR"
 export RESULT_DIR="$RESULT_DIR"
 export TCL_SCRIPT_DIR="$IEDA_SCRIPT_DIR/script"
@@ -58,8 +74,13 @@ CTS_MAX_FANOUT="${CTS_MAX_FANOUT:-}"
 CTS_CLUSTER_SIZE="${CTS_CLUSTER_SIZE:-}"
 CTS_MAX_LENGTH="${CTS_MAX_LENGTH:-}"
 CTS_LEVEL_MAX_FANOUT="${CTS_LEVEL_MAX_FANOUT:-}"
-BOTTOM_ROUTING_LAYER="${BOTTOM_ROUTING_LAYER:-met1}"
-TOP_ROUTING_LAYER="${TOP_ROUTING_LAYER:-met5}"
+if [ "$BACKEND_PDK" = "gf180" ]; then
+    BOTTOM_ROUTING_LAYER="${BOTTOM_ROUTING_LAYER:-Metal1}"
+    TOP_ROUTING_LAYER="${TOP_ROUTING_LAYER:-Metal5}"
+else
+    BOTTOM_ROUTING_LAYER="${BOTTOM_ROUTING_LAYER:-met1}"
+    TOP_ROUTING_LAYER="${TOP_ROUTING_LAYER:-met5}"
+fi
 SKIP_SETUP_WHEN_HOLD_MEETS_TIMING="${SKIP_SETUP_WHEN_HOLD_MEETS_TIMING:-1}"
 EXPORT_KICAD="${EXPORT_KICAD:-1}"
 RT_FULL_PA_ITER="${RT_FULL_PA_ITER:-0}"
@@ -93,8 +114,7 @@ export PDN_ENABLE_STRIPES
 export TAPCELL_DISTANCE
 
 estimate_cell_area() {
-    local pdk_lib="$FOUNDRY_DIR/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"
-    yosys -p "read_verilog $NETLIST_FILE; hierarchy -top $DESIGN_TOP; stat -liberty $pdk_lib" 2>/dev/null \
+    yosys -p "read_verilog $NETLIST_FILE; hierarchy -top $DESIGN_TOP; stat -liberty $PDK_LIB_FILE" 2>/dev/null \
         | awk '/Chip area for module/ {print $NF; exit}'
 }
 
@@ -102,9 +122,17 @@ configure_floorplan() {
     local cell_area core_side die_side core_lo core_hi
     cell_area="$(estimate_cell_area)"
     if [ -z "$cell_area" ]; then
-        echo "警告: 无法估算单元面积，回退到保守 floorplan"
-        export DIE_AREA="0.0 0.0 500.0 500.0"
-        export CORE_AREA="20.0 20.0 480.0 480.0"
+        echo "警告: 无法估算单元面积，使用 MIN_CORE_SIDE_UM 回退 floorplan"
+        core_side="$MIN_CORE_SIDE_UM"
+        die_side="$(awk -v core_side="$core_side" -v margin="$CORE_MARGIN_UM" '
+            BEGIN { printf "%.1f\n", core_side + 2.0 * margin }')"
+        core_lo="$(awk -v margin="$CORE_MARGIN_UM" '
+            BEGIN { printf "%.1f\n", margin }')"
+        core_hi="$(awk -v core_side="$core_side" -v margin="$CORE_MARGIN_UM" '
+            BEGIN { printf "%.1f\n", core_side + margin }')"
+        export DIE_AREA="0.0 0.0 ${die_side} ${die_side}"
+        export CORE_AREA="${core_lo} ${core_lo} ${core_hi} ${core_hi}"
+        echo "回退 floorplan: DIE=${DIE_AREA}, CORE=${CORE_AREA}"
         return
     fi
 
@@ -144,53 +172,75 @@ prepare_placement_config() {
         return
     fi
 
-    if [ -z "$PL_TARGET_DENSITY" ]; then
+    if [ "$BACKEND_PDK" != "gf180" ] && [ -z "$PL_TARGET_DENSITY" ]; then
         export PL_CONFIG="$src"
         return
     fi
 
     local dst="$RESULT_DIR/pl_config.json"
-    python3 - "$src" "$dst" "$PL_TARGET_DENSITY" <<'PY'
+    python3 - "$src" "$dst" "$PL_TARGET_DENSITY" "$BACKEND_PDK" <<'PY'
 import json
 import sys
 
-src, dst, density_raw = sys.argv[1:4]
-try:
-    density = float(density_raw)
-except ValueError as exc:
-    raise SystemExit(f"invalid PL_TARGET_DENSITY={density_raw!r}") from exc
-if not 0.05 <= density <= 0.95:
-    raise SystemExit(f"PL_TARGET_DENSITY={density_raw!r} outside supported range 0.05..0.95")
+src, dst, density_raw, backend_pdk = sys.argv[1:5]
 
 with open(src, "r", encoding="utf-8") as file:
     config = json.load(file)
-config["PL"]["GP"]["Density"]["target_density"] = density
+
+if density_raw:
+    try:
+        density = float(density_raw)
+    except ValueError as exc:
+        raise SystemExit(f"invalid PL_TARGET_DENSITY={density_raw!r}") from exc
+    if not 0.05 <= density <= 0.95:
+        raise SystemExit(f"PL_TARGET_DENSITY={density_raw!r} outside supported range 0.05..0.95")
+    config["PL"]["GP"]["Density"]["target_density"] = density
+
+if backend_pdk == "gf180":
+    config["PL"]["BUFFER"]["buffer_type"] = ["gf180mcu_fd_sc_mcu7t5v0__buf_1"]
+    fillers = [
+        "gf180mcu_fd_sc_mcu7t5v0__fill_8",
+        "gf180mcu_fd_sc_mcu7t5v0__fill_4",
+        "gf180mcu_fd_sc_mcu7t5v0__fill_2",
+        "gf180mcu_fd_sc_mcu7t5v0__fill_1",
+    ]
+    config["PL"]["Filler"]["first_iter"] = fillers
+    config["PL"]["Filler"]["second_iter"] = fillers
+
 with open(dst, "w", encoding="utf-8") as file:
     json.dump(config, file, indent=4)
     file.write("\n")
 PY
     export PL_CONFIG="$dst"
-    echo "Placement target_density: ${PL_TARGET_DENSITY} ($PL_CONFIG)"
+    echo "Placement config: $PL_CONFIG"
 }
 
 prepare_cts_config() {
     local src="$CONFIG_DIR/cts_default_config.json"
 
-    if [ -z "$CTS_ROUTING_LAYERS$CTS_MAX_FANOUT$CTS_CLUSTER_SIZE$CTS_MAX_LENGTH$CTS_LEVEL_MAX_FANOUT" ]; then
+    if [ "$BACKEND_PDK" != "gf180" ] && [ -z "$CTS_ROUTING_LAYERS$CTS_MAX_FANOUT$CTS_CLUSTER_SIZE$CTS_MAX_LENGTH$CTS_LEVEL_MAX_FANOUT" ]; then
         export CTS_CONFIG="$src"
         return
     fi
 
     local dst="$RESULT_DIR/cts_config.json"
     python3 - "$src" "$dst" "$CTS_ROUTING_LAYERS" "$CTS_MAX_FANOUT" \
-        "$CTS_CLUSTER_SIZE" "$CTS_MAX_LENGTH" "$CTS_LEVEL_MAX_FANOUT" <<'PY'
+        "$CTS_CLUSTER_SIZE" "$CTS_MAX_LENGTH" "$CTS_LEVEL_MAX_FANOUT" "$BACKEND_PDK" <<'PY'
 import json
 import sys
 
-src, dst, routing_layers, max_fanout, cluster_size, max_length, level_max_fanout = sys.argv[1:8]
+src, dst, routing_layers, max_fanout, cluster_size, max_length, level_max_fanout, backend_pdk = sys.argv[1:9]
 
 with open(src, "r", encoding="utf-8") as file:
     config = json.load(file)
+
+if backend_pdk == "gf180":
+    config["buffer_type"] = [
+        "gf180mcu_fd_sc_mcu7t5v0__clkbuf_8",
+        "gf180mcu_fd_sc_mcu7t5v0__clkbuf_4",
+        "gf180mcu_fd_sc_mcu7t5v0__clkbuf_2",
+    ]
+    config["root_buffer_type"] = "gf180mcu_fd_sc_mcu7t5v0__clkbuf_8"
 
 if routing_layers:
     try:
@@ -239,6 +289,57 @@ PY
     echo "CTS config: $CTS_CONFIG"
 }
 
+prepare_to_config() {
+    local stage="$1"
+    local env_name="$2"
+    local src="$CONFIG_DIR/to_default_config_${stage}.json"
+
+    if [ "$BACKEND_PDK" != "gf180" ]; then
+        export "$env_name=$src"
+        return
+    fi
+
+    local dst="$RESULT_DIR/to_config_${stage}.json"
+    python3 - "$src" "$dst" <<'PY'
+import json
+import sys
+
+src, dst = sys.argv[1:3]
+with open(src, "r", encoding="utf-8") as file:
+    config = json.load(file)
+
+config["DRV_insert_buffers"] = [
+    "gf180mcu_fd_sc_mcu7t5v0__buf_16",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_12",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_8",
+]
+config["setup_insert_buffers"] = [
+    "gf180mcu_fd_sc_mcu7t5v0__buf_16",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_12",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_8",
+]
+config["hold_insert_buffers"] = [
+    "gf180mcu_fd_sc_mcu7t5v0__buf_8",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_6",
+    "gf180mcu_fd_sc_mcu7t5v0__buf_4",
+]
+
+with open(dst, "w", encoding="utf-8") as file:
+    json.dump(config, file, indent=4)
+    file.write("\n")
+PY
+    export "$env_name=$dst"
+}
+
+prepare_timing_configs() {
+    prepare_to_config drv TO_DRV_CONFIG
+    prepare_to_config hold TO_HOLD_CONFIG
+    prepare_to_config setup TO_SETUP_CONFIG
+    if [ "$BACKEND_PDK" = "gf180" ]; then
+        echo "Timing optimization configs: $TO_DRV_CONFIG $TO_HOLD_CONFIG $TO_SETUP_CONFIG"
+    fi
+}
+
 clean_backend_results() {
     [ "$CLEAN_BACKEND_RESULTS" = "1" ] || return
 
@@ -254,7 +355,10 @@ clean_backend_results() {
           "$RESULT_DIR"/"${DESIGN_TOP}.gds2" \
           "$RESULT_DIR"/"${DESIGN_TOP}_netlist.v" \
           "$RESULT_DIR"/pl_config.json \
-          "$RESULT_DIR"/cts_config.json
+          "$RESULT_DIR"/cts_config.json \
+          "$RESULT_DIR"/to_config_drv.json \
+          "$RESULT_DIR"/to_config_hold.json \
+          "$RESULT_DIR"/to_config_setup.json
     rm -rf "$RESULT_DIR"/rt/*
 }
 
@@ -304,6 +408,9 @@ timing_tns_clean() {
 
 select_routing_input_def() {
     case "$ROUTE_INPUT_STAGE" in
+        placement)
+            printf '%s\n' "$RESULT_DIR/iPL_result.def"
+            ;;
         cts)
             printf '%s\n' "$RESULT_DIR/iCTS_result.def"
             ;;
@@ -317,7 +424,7 @@ select_routing_input_def() {
             printf '%s\n' "$RESULT_DIR/iTO_setup_result.def"
             ;;
         *)
-            echo "错误: ROUTE_INPUT_STAGE=$ROUTE_INPUT_STAGE 无效，应为 cts/timing/hold/setup" >&2
+            echo "错误: ROUTE_INPUT_STAGE=$ROUTE_INPUT_STAGE 无效，应为 placement/cts/timing/hold/setup" >&2
             exit 1
             ;;
     esac
@@ -410,13 +517,15 @@ echo "=========================================="
 echo " 硅迹开源 - iEDA 后端流程"
 echo "=========================================="
 
-for f in "$NETLIST_FILE" "$SDC_FILE" "$IEDA_BIN"; do
+for f in "$NETLIST_FILE" "$SDC_FILE" "$IEDA_BIN" "$PDK_LIB_FILE"; do
     if [ ! -e "$f" ]; then
         echo "错误: 文件不存在: $f"
         exit 1
     fi
 done
 
+echo "后端 PDK: $BACKEND_PDK"
+echo "Foundry 目录: $FOUNDRY_DIR"
 echo "网表文件: $NETLIST_FILE"
 echo "SDC 文件: $SDC_FILE"
 echo "设计顶层: $DESIGN_TOP"
@@ -426,6 +535,7 @@ clean_backend_results
 configure_floorplan
 prepare_placement_config
 prepare_cts_config
+prepare_timing_configs
 
 # 复制网表到结果目录供 iEDA 使用
 cp "$NETLIST_FILE" "$RESULT_DIR/${DESIGN_TOP}_netlist.v"
@@ -448,47 +558,60 @@ echo "[2/10] 运行全局布局 (iPL)..."
 echo "全局布局完成 ✓"
 maybe_stop_after "placement"
 
-#=============================================
-## 步骤 3: 时钟树综合 (CTS)
-#=============================================
-echo ""
-echo "[3/10] 运行时钟树综合 (iCTS)..."
-"$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iCTS.tcl"
-echo "时钟树综合完成 ✓"
-maybe_stop_after "cts"
+if [ "$ROUTE_INPUT_STAGE" = "placement" ]; then
+    echo ""
+    echo "ROUTE_INPUT_STAGE=placement，跳过 CTS/iTO，直接使用 placement DEF 进行布线。"
+    TIMING_OPT_DEF="$RESULT_DIR/iPL_result.def"
+else
+    #=============================================
+    ## 步骤 3: 时钟树综合 (CTS)
+    #=============================================
+    echo ""
+    echo "[3/10] 运行时钟树综合 (iCTS)..."
+    "$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iCTS.tcl"
+    echo "时钟树综合完成 ✓"
+    maybe_stop_after "cts"
 
-#=============================================
-## 步骤 4: 驱动/扇出修复 (iTO DRV)
-#=============================================
-echo ""
-echo "[4/10] 运行驱动/扇出修复 (iTO DRV)..."
-export INPUT_DEF="$RESULT_DIR/iCTS_result.def"
-export OUTPUT_DEF="$RESULT_DIR/iTO_drv_result.def"
-"$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_drv.tcl"
-echo "驱动/扇出修复完成 ✓"
-maybe_stop_after "ito_drv"
+    #=============================================
+    ## 步骤 4: 驱动/扇出修复 (iTO DRV)
+    #=============================================
+    echo ""
+    echo "[4/10] 运行驱动/扇出修复 (iTO DRV)..."
+    export INPUT_DEF="$RESULT_DIR/iCTS_result.def"
+    export OUTPUT_DEF="$RESULT_DIR/iTO_drv_result.def"
+    "$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_drv.tcl"
+    echo "驱动/扇出修复完成 ✓"
+    maybe_stop_after "ito_drv"
 
-#=============================================
-## 步骤 5: Hold 优化
-#=============================================
-echo ""
-echo "[5/10] 运行 Hold 优化 (iTO Hold)..."
-export INPUT_DEF="$RESULT_DIR/iTO_drv_result.def"
-export OUTPUT_DEF="$RESULT_DIR/iTO_hold_result.def"
-"$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_hold.tcl"
-echo "Hold 优化完成 ✓"
-maybe_stop_after "ito_hold"
+    #=============================================
+    ## 步骤 5: Hold 优化
+    #=============================================
+    echo ""
+    echo "[5/10] 运行 Hold 优化 (iTO Hold)..."
+    export INPUT_DEF="$RESULT_DIR/iTO_drv_result.def"
+    export OUTPUT_DEF="$RESULT_DIR/iTO_hold_result.def"
+    "$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_hold.tcl"
+    echo "Hold 优化完成 ✓"
+    maybe_stop_after "ito_hold"
 
-#=============================================
-## 步骤 6: Setup 优化
-#=============================================
-echo ""
-TIMING_OPT_DEF="$RESULT_DIR/iTO_hold_result.def"
-if [ "$SKIP_SETUP_WHEN_HOLD_MEETS_TIMING" = "1" ]; then
-    echo "[6/10] 检查 Hold 优化后时序..."
-    run_sta_check "$RESULT_DIR/iTO_hold_result.def"
-    if timing_tns_clean; then
-        echo "Hold 结果的 setup/hold TNS 已清零，跳过 Setup 优化 ✓"
+    #=============================================
+    ## 步骤 6: Setup 优化
+    #=============================================
+    echo ""
+    TIMING_OPT_DEF="$RESULT_DIR/iTO_hold_result.def"
+    if [ "$SKIP_SETUP_WHEN_HOLD_MEETS_TIMING" = "1" ]; then
+        echo "[6/10] 检查 Hold 优化后时序..."
+        run_sta_check "$RESULT_DIR/iTO_hold_result.def"
+        if timing_tns_clean; then
+            echo "Hold 结果的 setup/hold TNS 已清零，跳过 Setup 优化 ✓"
+        else
+            echo "[6/10] 运行 Setup 优化 (iTO Setup)..."
+            export INPUT_DEF="$RESULT_DIR/iTO_hold_result.def"
+            export OUTPUT_DEF="$RESULT_DIR/iTO_setup_result.def"
+            "$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_setup.tcl"
+            echo "Setup 优化完成 ✓"
+            TIMING_OPT_DEF="$RESULT_DIR/iTO_setup_result.def"
+        fi
     else
         echo "[6/10] 运行 Setup 优化 (iTO Setup)..."
         export INPUT_DEF="$RESULT_DIR/iTO_hold_result.def"
@@ -497,15 +620,8 @@ if [ "$SKIP_SETUP_WHEN_HOLD_MEETS_TIMING" = "1" ]; then
         echo "Setup 优化完成 ✓"
         TIMING_OPT_DEF="$RESULT_DIR/iTO_setup_result.def"
     fi
-else
-    echo "[6/10] 运行 Setup 优化 (iTO Setup)..."
-    export INPUT_DEF="$RESULT_DIR/iTO_hold_result.def"
-    export OUTPUT_DEF="$RESULT_DIR/iTO_setup_result.def"
-    "$IEDA_BIN" -script "$SCRIPT_DIR/tcl/run_iTO_setup.tcl"
-    echo "Setup 优化完成 ✓"
-    TIMING_OPT_DEF="$RESULT_DIR/iTO_setup_result.def"
+    maybe_stop_after "ito_setup"
 fi
-maybe_stop_after "ito_setup"
 
 #=============================================
 ## 步骤 7: 布线 (Routing)
@@ -571,6 +687,7 @@ else
     echo "继续使用优化后的布局结果进行 STA/GDS 导出..."
     RT_SUCCESS=false
 fi
+maybe_stop_after "routing"
 
 #=============================================
 ## 步骤 8: 静态时序分析 (STA)

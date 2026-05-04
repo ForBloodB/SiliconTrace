@@ -3,7 +3,7 @@
 # 注意：此文件由 run_synth.sh 动态生成，请勿手动编辑
 
 # 读取 RTL
-read_verilog __RTL_FILE__
+__READ_RTL_FILES__
 
 # 设置顶层模块
 hierarchy -top __DESIGN_TOP__

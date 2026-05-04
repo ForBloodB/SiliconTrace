@@ -17,7 +17,11 @@ if {[info exists ::env(INPUT_DEF)]} {
 }
 def_init -path $INPUT_DEF_PATH
 
-run_to_setup -config $::env(CONFIG_DIR)/to_default_config_setup.json
+set TO_SETUP_CONFIG "$::env(CONFIG_DIR)/to_default_config_setup.json"
+if {[info exists ::env(TO_SETUP_CONFIG)] && $::env(TO_SETUP_CONFIG) ne ""} {
+    set TO_SETUP_CONFIG $::env(TO_SETUP_CONFIG)
+}
+run_to_setup -config $TO_SETUP_CONFIG
 feature_tool -path $::env(RESULT_DIR)/feature/ito_optsetup.json -step optSetup
 
 if {[info exists ::env(OUTPUT_DEF)]} {
