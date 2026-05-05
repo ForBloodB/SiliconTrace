@@ -23,22 +23,21 @@ graph TB
     subgraph 设计流程层
         B[RTL 设计<br/>Verilog HDL]
         C[Yosys 综合<br/>RTL→门级网表]
-        D[iEDA 后端<br/>布局布线]
+        D[LibreLane/OpenROAD 后端<br/>布局布线]
         E[GDSII 输出<br/>物理版图]
         F[KiCad 载板<br/>PCB 设计]
     end
 
     subgraph 工具链层
         G[Yosys 0.64+]
-        H[iEDA Latest]
-        I[KiCad 6.0+]
+        H[LibreLane 3.x]
+        I[KiCad 7.0+]
         J[SKY130 PDK]
     end
 
     subgraph 自动化层
-        K[Python 脚本<br/>网表转换]
-        L[Tcl 脚本<br/>后端控制]
-        M[Shell 脚本<br/>全流程]
+        K[Shell 脚本<br/>全流程]
+        L[Python 脚本<br/>KiCad 生成]
     end
 
     A -->|发送命令| B
@@ -46,9 +45,8 @@ graph TB
     A -->|实时日志| G
     A -->|实时日志| H
     A -->|实时日志| I
-    K --> C
-    L --> D
-    M --> B
+    K --> B
+    L --> F
 ```
 
 ```mermaid
@@ -60,39 +58,17 @@ graph LR
         R4 --> R5[输出网表<br/>.v + .json]
     end
 
-    subgraph 后端流程
-        P1[Floorplan<br/>iFP] --> P2[Placement<br/>iPL]
-        P2 --> P3[CTS<br/>iCTS]
-        P3 --> P4[Routing<br/>iRT]
-        P4 --> P5[STA<br/>iSTA]
-        P5 --> P6[GDSII<br/>版图输出]
+    subgraph 后端流程-LibreLane/OpenROAD
+        P1[Floorplan] --> P2[Global Placement]
+        P2 --> P3[Detailed Placement]
+        P3 --> P4[CTS]
+        P4 --> P5[Global Routing]
+        P5 --> P6[Detailed Routing]
+        P6 --> P7[Signoff DRC/LVS]
+        P7 --> P8[GDSII 版图输出]
     end
 
     R5 --> P1
-```
-
-```mermaid
-graph TB
-    subgraph 前端功能
-        A1[流程可视化<br/>7步状态追踪]
-        A2[工具链检测<br/>自动发现工具]
-        A3[实时日志<br/>SSE 流式推送]
-        A4[设计切换<br/>多 RTL 管理]
-        A5[文件导入<br/>一键上传 + MCP]
-    end
-
-    subgraph 后端控制
-        B1[综合控制<br/>Yosys 调用]
-        B2[后端控制<br/>iEDA Tcl]
-        B3[报告生成<br/>STA/功耗]
-        B4[文件管理<br/>生成文件浏览]
-    end
-
-    A1 --> B1
-    A1 --> B2
-    A3 --> B3
-    A4 --> B1
-    A5 --> B1
 ```
 
 ---
@@ -100,68 +76,53 @@ graph TB
 ## 详细目录结构
 
 ```
-SiliconTrace_Open/
+SiliconTrace/
 │
 ├── rtl/                              # RTL 源代码
-│   └── picorv32/                     # PicoRV32 RISC-V 处理器核心
-│       └── picorv32.v                # Verilog 源码 (3049行)
+│   ├── picorv32/                     # PicoRV32 RISC-V 处理器核心
+│   │   └── picorv32.v                # Verilog 源码 (3049行)
+│   └── serv/                         # SERV 串行 RISC-V 处理器
 │
 ├── synthesis/                        # Yosys 综合
-│   ├── synth.ys                      # 综合脚本 (含 memory_map)
-│   ├── run_synth.sh                  # 综合运行脚本 (含网表修复)
-│   ├── constraints/                  # SDC 时序约束
-│   │   └── picorv32.sdc
-│   └── results/                      # 综合输出
-│       ├── picorv32_netlist.v        # 门级网表 (839KB)
-│       └── picorv32_netlist.json     # JSON 网表 (2.9MB)
+│   ├── synth.ys                      # 综合脚本模板
+│   ├── run_synth.sh                  # 综合运行脚本
+│   └── constraints/                  # SDC 时序约束
+│       ├── picorv32.sdc
+│       └── serv_synth_wrapper.sdc
 │
-├── backend/                          # iEDA 后端流程
-│   ├── config/                       # iEDA 配置文件
-│   │   ├── pl_default_config.json    # 布局配置 (density=0.3)
-│   │   └── rt_default_config.json    # 布线配置 (4线程)
-│   ├── tcl/                          # iEDA Tcl 脚本
-│   │   ├── run_iFP.tcl               # Floorplan 脚本
-│   │   ├── run_iPL.tcl               # Placement 脚本
-│   │   ├── run_iCTS.tcl              # CTS 脚本
-│   │   ├── run_iRT.tcl               # Routing 脚本
-│   │   ├── run_iSTA.tcl              # STA 脚本
-│   │   └── run_def_to_gds.tcl        # GDSII 生成脚本
-│   ├── run_ieda.sh                   # 后端全流程脚本
-│   └── result/                       # 后端输出
-│       ├── iFP_result.def            # Floorplan 结果
-│       ├── iPL_result.def            # Placement 结果
-│       ├── iCTS_result.def           # CTS 结果
-│       ├── final_design.def          # 最终 DEF
-│       ├── picorv32.gds2             # GDSII 物理版图 (87MB)
-│       └── sta/                      # 时序报告
-│           ├── picorv32.rpt
-│           └── *.skew
+├── backend/                          # 后端配置
+│   └── config/                       # LibreLane 配置文件
+│       └── picorv32_librelane_sky130.yaml  # PicoRV32 配置
 │
 ├── scripts/                          # 自动化脚本
-│   ├── yosys2ieda/                   # 网表/约束转换
-│   │   ├── convert_netlist.py        # Yosys JSON → iEDA 格式
-│   │   ├── convert_constraints.py    # SDC 约束合并
-│   │   └── fix_netlist.py            # 修复复杂拼接赋值
-│   ├── ieda_utils/                   # 报告工具
-│   │   └── generate_report.py        # STA/功耗报告解析
+│   ├── run_picorv32_librelane.sh     # PicoRV32 LibreLane 运行脚本
+│   ├── run_serv_librelane.sh         # SERV LibreLane 运行脚本
 │   └── automation/                   # 全流程脚本
 │       ├── run_full_flow.sh          # RTL→GDSII 一键运行
 │       └── clean.sh                  # 清理生成文件
 │
+├── artifacts/                        # 生成输出目录 (gitignored)
+│   └── librelane/                    # LibreLane 运行结果
+│       ├── picorv32_sky130/          # PicoRV32 设计结果
+│       │   └── runs/                 # 运行目录
+│       │       └── sky130_picorv32_fullfix13/  # 最佳运行
+│       │           └── final/        # 最终输出
+│       │               ├── gds/      # GDSII 文件
+│       │               ├── kicad/    # KiCad 文件
+│       │               └── metrics.json  # 指标报告
+│       └── serv_sky130/              # SERV 设计结果
+│
 ├── kicad/                            # KiCad PCB 设计
 │   ├── test_board/                   # 测试载板
 │   │   ├── test_board.kicad_pro      # 项目文件
-│   │   ├── test_board.kicad_sch      # 原理图 (PicoRV32 + 外设)
-│   │   └── test_board.kicad_pcb      # 四层 PCB Layout (40x30mm)
+│   │   ├── test_board.kicad_sch      # 原理图
+│   │   └── test_board.kicad_pcb      # PCB Layout
 │   ├── symbols/                      # 原理图符号库
-│   │   └── picorv32.kicad_sym        # PicoRV32 符号
 │   └── footprints/                   # 封装库
-│       └── QFN-48_7x7mm_P0.5mm.kicad_mod  # QFN-48 封装
 │
 ├── frontend/                         # AI 交互控制台
-│   ├── app.py                        # Flask 后端 (命令解析、状态管理)
-│   └── templates/
-│       └── index.html                # Web 前端 (流程可视化、日志面板)
+│   ├── app.py                        # Flask 后端
+│   └── templates/                    # Web 前端模板
 │
 ├── docker/                           # Docker 环境
 │   ├── Dockerfile                    # EDA 工具链镜像
@@ -169,28 +130,15 @@ SiliconTrace_Open/
 │
 ├── tests/                            # 测试
 │   ├── simulation/                   # 仿真测试
-│   │   ├── tb_picorv32.v             # 测试平台
-│   │   ├── test.hex                  # 测试程序
-│   │   └── Makefile
 │   └── formal/                       # 形式验证
-│       ├── picorv32.sby              # SymbiYosys 配置
-│       └── properties.v              # 形式验证属性
 │
 ├── docs/                             # 文档
-│   ├── COMMANDS.md                   # 完整命令手册
-│   ├── blog/                         # 技术博客
-│   └── tutorials/                    # 教程 (4篇)
-│
-├── uploads/                          # 用户上传文件
-│   ├── rtl/                          # 上传的 RTL 设计
-│   ├── footprints/                   # 上传的封装
-│   └── symbols/                      # 上传的符号
+│   └── COMMANDS.md                   # 完整命令手册
 │
 ├── README.md                         # 本文件
 ├── USAGE.md                          # 使用说明
 ├── PROGRESS.md                       # 进度记录
-├── .gitignore
-└── .github/workflows/                # CI 配置
+└── .gitignore
 ```
 
 ---
@@ -200,13 +148,14 @@ SiliconTrace_Open/
 | 工具 | 用途 | 版本 | 开源协议 |
 |------|------|------|----------|
 | **Yosys** | RTL 综合 (Verilog → 门级网表) | 0.64+ | ISC |
-| **iEDA** | 国产开源数字后端平台 | Latest | Apache 2.0 |
-| **OpenROAD / LibreLane** | 开源数字后端流程，用于 DRC closure 实验 | LibreLane 3.x / OpenROAD | BSD / Apache 2.0 |
-| **KiCad** | 开源 PCB 设计 | 6.0+ | GPL |
+| **LibreLane** | 开源数字后端流程 (基于 OpenROAD) | 3.x | Apache 2.0 |
+| **OpenROAD** | 开源 EDA 平台 (通过 LibreLane 调用) | Latest | BSD |
+| **Magic** | 版图编辑和 DRC 检查 | Latest | MIT |
+| **KLayout** | 版图查看和 DRC 检查 | Latest | GPL |
+| **Netgen** | LVS 网表对比 | Latest | BSD |
+| **KiCad** | 开源 PCB 设计 | 7.0+ | GPL |
 | **SKY130 PDK** | SkyWater 130nm 工艺设计套件 | sky130A | Apache 2.0 |
 | **Volare** | PDK 版本管理工具 | 0.20+ | MIT |
-| **Icarus Verilog** | Verilog 仿真器 | 11.0+ | GPL |
-| **SymbiYosys** | 形式验证工具 | Latest | ISC |
 
 ---
 
@@ -225,13 +174,11 @@ sudo apt update && sudo apt upgrade -y
 # 安装基础依赖
 sudo apt install -y build-essential cmake git curl wget python3 python3-pip
 
-# 安装 EDA 相关依赖
-sudo apt install -y libboost-all-dev libeigen3-dev libgoogle-glog-dev \
-    libgflags-dev libtbb-dev libgtest-dev libgmp-dev tcl-dev tk-dev \
-    flex bison autoconf automake libtool pkg-config
-
 # 安装 KiCad
 sudo apt install -y kicad
+
+# 安装 Python 工具
+pip3 install librelane volare
 ```
 
 #### 2. 安装 Yosys
@@ -245,126 +192,38 @@ git clone https://github.com/YosysHQ/yosys.git
 cd yosys && make -j$(nproc) && sudo make install
 ```
 
-#### 3. 安装 iEDA
+#### 3. 安装 SKY130 PDK
 
 ```bash
-cd ~
-git clone https://github.com/OSCC-Project/iEDA.git
-cd iEDA
-mkdir build && cd build
-cmake ..
-make -j1  # 约 30-60 分钟，使用 -j1 避免内存不足
-```
-
-#### 4. 安装 SKY130 PDK
-
-```bash
-pip3 install volare
 volare enable --pdk sky130
 ```
 
-#### 5. 配置环境变量
+#### 4. 运行 PicoRV32 完整流程
 
 ```bash
-cat >> ~/.bashrc << 'EOF'
-export PDK_ROOT=$HOME/.volare
-export IEDA_ROOT=$HOME/iEDA
-export IEDA_BIN=$IEDA_ROOT/scripts/design/sky130_gcd/iEDA
-export PATH=$IEDA_ROOT/scripts/design/sky130_gcd:$PATH
-EOF
-source ~/.bashrc
+cd ~/SiliconTrace
+
+# 运行 PicoRV32 LibreLane 流程
+bash scripts/run_picorv32_librelane.sh sky130_picorv32
+
+# 查看结果
+ls artifacts/librelane/picorv32_sky130/runs/sky130_picorv32/final/
 ```
 
-#### 6. 运行完整流程
+#### 5. 查看生成的 KiCad 文件
 
 ```bash
-cd ~/SiliconTrace_Open
+# 打开 KiCad 项目
+kicad artifacts/librelane/picorv32_sky130/runs/sky130_picorv32/final/kicad/PicoRV32_BGA256.kicad_pro
+```
 
-# 方式 A: 使用一键脚本
-bash scripts/automation/run_full_flow.sh
+#### 6. 使用 AI 交互控制台
 
-# 方式 B: 使用 AI 交互控制台
+```bash
 pip3 install flask flask-cors
 python3 frontend/app.py
 # 浏览器访问: http://localhost:5000
 ```
-
-#### 7. 分步运行
-
-```bash
-# 步骤 1: 综合
-bash synthesis/run_synth.sh
-
-# 步骤 2: 后端全流程
-bash backend/run_ieda.sh
-
-# 步骤 3: 查看结果
-ls artifacts/synthesis/          # 综合网表
-ls artifacts/backend/             # 后端版图
-klayout artifacts/backend/picorv32.gds2  # 查看 GDSII
-```
-
-#### 8. 使用 OpenROAD/LibreLane 跑 routing DRC closure
-
-当 iEDA 布线 DRC 较高时，可以使用 OpenROAD/LibreLane 作为后端验证路线。当前仓库已经保留了 SERV 与 PicoRV32 的 SKY130 LibreLane 配置，目标是先让 routing DRC=0，再考虑频率和面积。
-
-准备环境变量：
-
-```bash
-cd ~/SiliconTrace_Open
-export LL_BIN="$PWD/artifacts/librelane/bin"
-export OR_ENV="$PWD/artifacts/tools/openroad-env/bin"
-export PDK_ROOT="$PWD/artifacts/librelane/pdk_sky130"
-export PYTHONPATH="$PWD/artifacts/librelane/python_patch:${PYTHONPATH:-}"
-export PATH="$LL_BIN:$OR_ENV:$PATH"
-```
-
-运行 SERV 到 detailed routing：
-
-```bash
-/usr/bin/python3 -m librelane \
-  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
-  --run-tag sky130_test \
-  -S OpenROAD.STAPrePNR \
-  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
-  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
-  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
-  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
-  -T OpenROAD.DetailedRouting \
-  artifacts/librelane/serv_sky130/config.yaml
-```
-
-运行 PicoRV32 到 detailed routing：
-
-```bash
-/usr/bin/python3 -m librelane \
-  --manual-pdk --pdk-root "$PDK_ROOT" -p sky130 -s sky130_fd_sc_hd \
-  --run-tag sky130_picorv32 \
-  -S OpenROAD.STAPrePNR \
-  -S OpenROAD.STAMidPNR -S OpenROAD.STAMidPNR-1 -S OpenROAD.STAMidPNR-2 -S OpenROAD.STAMidPNR-3 \
-  -S OpenROAD.ResizerTimingPostCTS -S OpenROAD.ResizerTimingPostGRT \
-  -S OpenROAD.CheckAntennas -S OpenROAD.RepairAntennas \
-  -S Odb.SetPowerConnections -S Odb.WriteVerilogHeader \
-  -T OpenROAD.DetailedRouting \
-  artifacts/librelane/picorv32_sky130/config.yaml
-```
-
-判断结果：
-
-```bash
-# detailed routing 日志中应出现 Number of violations = 0
-grep -R "Number of violations = 0" artifacts/librelane/*_sky130/runs/*/*-openroad-detailedrouting/openroad-detailedrouting.log
-
-# OpenROAD 输出的 .drc 文件为空代表 routing DRC 为 0
-find artifacts/librelane/*_sky130/runs -name '*.drc' -size 0 -print
-```
-
-已验证结果：
-
-- SERV + SKY130 + OpenROAD：routing DRC = 0
-- PicoRV32 + SKY130 + OpenROAD：routing DRC = 0
-
-> 注意：这里确认的是 OpenROAD/TritonRoute routing DRC 和 LibreLane `Checker.TrDRC`，不是完整 signoff DRC/LVS。完整 tapeout 前仍需继续跑 Magic/KLayout DRC、XOR 和 LVS。
 
 ---
 
@@ -398,7 +257,7 @@ newgrp docker
 #### 2. 构建 Docker 镜像
 
 ```bash
-cd ~/SiliconTrace_Open
+cd ~/SiliconTrace
 
 # 构建包含所有 EDA 工具的镜像
 docker compose -f docker/docker-compose.yml build
@@ -413,27 +272,8 @@ docker compose -f docker/docker-compose.yml up -d
 # 进入 EDA 容器
 docker exec -it silicontrace-eda bash
 
-# 在容器内运行全流程
-bash scripts/automation/run_full_flow.sh
-```
-
-#### 4. 访问 AI 控制台
-
-```bash
-# 启动前端服务
-docker compose -f docker/docker-compose.yml up frontend
-
-# 浏览器访问: http://localhost:5000
-```
-
-#### 5. 使用预构建镜像 (如果可用)
-
-```bash
-# 拉取镜像
-docker pull yourusername/silicontrace:latest
-
-# 启动
-docker compose -f docker/docker-compose.yml up -d
+# 在容器内运行 PicoRV32
+bash scripts/run_picorv32_librelane.sh sky130_picorv32
 ```
 
 ---
@@ -506,16 +346,14 @@ curl -X POST http://localhost:5000/api/upload/mcp \
 
 ## 输出文件说明
 
-| 阶段 | 输出文件 | 大小 | 查看方式 |
-|------|----------|------|----------|
-| 综合 | `artifacts/synthesis/picorv32_netlist.v` | 839KB | Vim / VS Code |
-| 综合 | `artifacts/synthesis/picorv32_netlist.json` | 2.9MB | Vim / VS Code |
-| Floorplan | `artifacts/backend/iFP_result.def` | 5.1MB | KLayout |
-| Placement | `artifacts/backend/iPL_result.def` | 5.3MB | KLayout |
-| CTS | `artifacts/backend/iCTS_result.def` | 5.3MB | KLayout |
-| GDSII | `artifacts/backend/picorv32.gds2` | 87MB | KLayout |
-| STA | `artifacts/backend/sta/picorv32.rpt` | 53KB | Vim / VS Code |
-| PCB | `kicad/test_board/test_board.kicad_pcb` | - | KiCad |
+| 阶段 | 输出文件 | 查看方式 |
+|------|----------|----------|
+| 综合 | `artifacts/synthesis/picorv32_netlist.v` | Vim / VS Code |
+| GDSII | `artifacts/librelane/picorv32_sky130/runs/*/final/gds/` | KLayout |
+| DRC 报告 | `artifacts/librelane/picorv32_sky130/runs/*/final/metrics.json` | Vim / VS Code |
+| KiCad PCB | `artifacts/librelane/picorv32_sky130/runs/*/final/kicad/PicoRV32_BGA256.kicad_pcb` | KiCad |
+| KiCad 原理图 | `artifacts/librelane/picorv32_sky130/runs/*/final/kicad/PicoRV32_BGA256.kicad_sch` | KiCad |
+| 渲染图 | `artifacts/librelane/picorv32_sky130/runs/*/final/render/` | 图片查看器 |
 
 ---
 
@@ -525,10 +363,18 @@ curl -X POST http://localhost:5000/api/upload/mcp \
 
 - **工艺**: SKY130 130nm
 - **设计规模**: ~3000 行 Verilog
-- **Die 面积**: 1000μm × 1000μm
+- **Die 面积**: 1200μm × 1200μm
 - **标准单元库**: sky130_fd_sc_hd (高密度)
-- **布局密度**: 0.3
-- **测试载板**: 4 层 PCB (40mm × 30mm)
+- **封装**: BGA-256 (17mm × 17mm, 1.0mm pitch)
+- **Signoff 状态**: DRC=0, LVS=0, XOR=0
+
+### SERV 串行 RISC-V 处理器核心
+
+- **工艺**: SKY130 130nm
+- **设计规模**: 极小 (串行架构)
+- **Die 面积**: 600μm × 600μm
+- **标准单元库**: sky130_fd_sc_hd (高密度)
+- **Signoff 状态**: DRC=0, LVS=0, XOR=0
 
 ---
 
@@ -555,10 +401,12 @@ curl -X POST http://localhost:5000/api/upload/mcp \
 ## 致谢
 
 - [YosysHQ](https://github.com/YosysHQ) - 开源综合工具
-- [iEDA](https://github.com/OSCC-Project/iEDA) - 国产开源数字后端平台
+- [LibreLane](https://github.com/efabless/librelane) - 开源数字后端流程
+- [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD) - 开源 EDA 平台
 - [KiCad](https://www.kicad.org/) - 开源 PCB 设计工具
 - [SkyWater PDK](https://github.com/google/skywater-pdk) - 130nm 工艺设计套件
 - [PicoRV32](https://github.com/cliffordwolf/picorv32) - RISC-V 处理器核心
+- [SERV](https://github.com/olofk/serv) - 串行 RISC-V 处理器核心
 
 ---
 

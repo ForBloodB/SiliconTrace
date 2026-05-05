@@ -7,12 +7,14 @@
 - ✅ 系统依赖安装（build-essential, cmake, boost, eigen3, glog, gflags, tbb, gtest, libgmp 等）
 
 ### 1.2 工具链安装
-- ✅ Yosys v0.64+172（源码编译，`/usr/local/bin/yosys`）
-- ✅ iEDA（源码编译，二进制位置 `~/iEDA/scripts/design/sky130_gcd/iEDA`）
+- ✅ Yosys v0.64+172（apt 安装）
+- ✅ LibreLane v3.0.3（pip 安装）
+- ✅ OpenROAD（通过 LibreLane 自动调用）
+- ✅ Magic（版图编辑和 DRC 检查）
+- ✅ KLayout（版图查看和 DRC 检查）
 - ✅ SKY130 PDK（volare 安装，`~/.volare/sky130A`）
-- ✅ KiCad v6.0.2（apt 安装）
+- ✅ KiCad v7.0+（apt 安装）
 - ✅ Volare v0.20.6（pip 安装）
-- ✅ Rust/Cargo v1.95.0（iEDA 编译依赖）
 
 ### 1.3 环境变量
 - ✅ `~/.eda_env` 配置文件创建
@@ -20,67 +22,43 @@
 
 ---
 
-## 二、SiliconTrace_Open 项目创建（已完成）
+## 二、SiliconTrace 项目创建（已完成）
 
 ### 2.1 项目结构
 ```
-~/SiliconTrace_Open/
-├── rtl/picorv32/           # ✅ PicoRV32 RTL 源码（3049行）
-├── synthesis/              # ✅ Yosys 综合
-│   ├── synth.ys           # ✅ 综合脚本（含 memory_map）
-│   ├── constraints/       # ✅ SDC 约束
-│   └── run_synth.sh       # ✅ 综合运行脚本（含网表修复）
-├── backend/                # ✅ iEDA 后端
-│   ├── config/            # ✅ iEDA 配置文件（HD 单元库）
-│   ├── tcl/               # ✅ iEDA Tcl 脚本
-│   ├── run_ieda.sh        # ✅ 后端全流程脚本
-│   └── *.tcl              # ✅ 原始脚本（参考用）
-├── scripts/                # ✅ 自动化脚本
-│   ├── yosys2ieda/        # ✅ 网表/约束转换 + 修复
-│   ├── ieda_utils/        # ✅ 报告生成
-│   └── automation/        # ✅ 全流程脚本 + 清理脚本
-├── kicad/test_board/       # ✅ KiCad 项目
-│   ├── test_board.kicad_pro  # ✅ 项目文件
-│   ├── test_board.kicad_sch  # ✅ 原理图
-│   └── test_board.kicad_pcb  # ✅ 四层 PCB Layout
-├── kicad/symbols/          # ✅ 原理图符号库
-│   └── picorv32.kicad_sym    # ✅ PicoRV32 符号
-├── kicad/footprints/       # ✅ 封装库
-│   └── QFN-48_7x7mm_P0.5mm.kicad_mod  # ✅ QFN-48 封装
-├── docs/                   # ✅ 文档
-│   ├── blog/              # ✅ 技术博客（2篇）
-│   └── tutorials/         # ✅ 教程（4篇）
-├── tests/                  # ✅ 测试
-│   ├── simulation/        # ✅ 仿真测试平台
-│   └── formal/            # ✅ 形式验证配置
-├── frontend/               # ✅ AI 交互控制台
-│   ├── app.py              # ✅ Flask 后端
-│   └── templates/          # ✅ Web 前端
-│       └── index.html      # ✅ 控制台页面
-├── docker/                 # ✅ Docker 环境
-│   ├── Dockerfile          # ✅ EDA 工具链镜像
-│   └── docker-compose.yml  # ✅ Docker Compose 配置
-├── docs/                   # ✅ 文档
-│   ├── COMMANDS.md         # ✅ 完整命令手册
-│   ├── blog/               # ✅ 技术博客（2篇）
-│   └── tutorials/          # ✅ 教程（4篇）
-├── README.md               # ✅ 项目说明
-├── USAGE.md                # ✅ 使用说明
-├── .gitignore              # ✅ Git 忽略规则
-├── .github/workflows/      # ✅ CI 配置
-└── plan.md                 # ✅ 项目规划
+~/SiliconTrace/
+├── rtl/                              # RTL 源代码
+│   ├── picorv32/                     # ✅ PicoRV32 RISC-V 处理器核心
+│   └── serv/                         # ✅ SERV 串行 RISC-V 处理器
+├── synthesis/                        # ✅ Yosys 综合
+│   ├── synth.ys                      # ✅ 综合脚本模板
+│   ├── run_synth.sh                  # ✅ 综合运行脚本
+│   └── constraints/                  # ✅ SDC 时序约束
+├── backend/                          # ✅ 后端配置
+│   └── config/                       # ✅ LibreLane 配置文件
+├── scripts/                          # ✅ 自动化脚本
+│   ├── run_picorv32_librelane.sh     # ✅ PicoRV32 LibreLane 运行脚本
+│   ├── run_serv_librelane.sh         # ✅ SERV LibreLane 运行脚本
+│   └── automation/                   # ✅ 全流程脚本
+├── artifacts/                        # ✅ 生成输出目录 (gitignored)
+│   └── librelane/                    # ✅ LibreLane 运行结果
+├── kicad/                            # ✅ KiCad PCB 设计
+├── frontend/                         # ✅ AI 交互控制台
+├── docker/                           # ✅ Docker 环境
+├── tests/                            # ✅ 测试
+├── docs/                             # ✅ 文档
+├── README.md                         # ✅ 项目说明
+├── USAGE.md                          # ✅ 使用说明
+└── .gitignore                        # ✅ Git 忽略规则
 ```
 
 ### 2.2 自动化脚本清单
 | 脚本 | 功能 | 状态 |
 |------|------|------|
+| `scripts/run_picorv32_librelane.sh` | PicoRV32 LibreLane 完整流程 | ✅ |
+| `scripts/run_serv_librelane.sh` | SERV LibreLane 完整流程 | ✅ |
 | `scripts/automation/run_full_flow.sh` | RTL→GDSII 一键全流程 | ✅ |
 | `scripts/automation/clean.sh` | 清理生成文件 | ✅ |
-| `scripts/yosys2ieda/convert_netlist.py` | Yosys JSON 网表 → iEDA 格式 | ✅ |
-| `scripts/yosys2ieda/convert_constraints.py` | SDC 约束合并/转换 | ✅ |
-| `scripts/yosys2ieda/fix_netlist.py` | 修复网表中复杂拼接赋值 | ✅ |
-| `scripts/ieda_utils/generate_report.py` | STA/功耗报告解析 | ✅ |
-| `backend/run_ieda.sh` | iEDA 后端全流程 | ✅ |
 
 ---
 
@@ -88,83 +66,127 @@
 
 ### 3.1 Yosys 综合（✅ 已验证）
 - ✅ `bash synthesis/run_synth.sh` 成功运行
-- ✅ 输出：`picorv32_netlist.v` (839KB), `picorv32_netlist.json` (2.9MB)
+- ✅ 输出：`picorv32_netlist.v` (~800KB), `picorv32_netlist.json` (~3MB)
 - ✅ 含 `memory_map` 展开（将寄存器文件展开为独立触发器）
-- ✅ 含 `fix_netlist.py` 后处理（展开复杂拼接赋值）
 
-### 3.2 iEDA 后端流程（✅ 已验证）
-- ✅ Floorplan (iFP)：成功生成 1000um x 1000um 布局
-- ✅ Placement (iPL)：成功完成全局布局和详细布局（density=0.3）
-- ✅ CTS (iCTS)：成功完成时钟树综合
-- ⚠️ Routing (iRT)：有 DRC 迭代中的 pin access 问题（7.7GB 内存限制）
-  - 路由器运行完成但有约 5600 个 DRC 违例
-  - 使用 CTS 结果继续后续流程
-- ✅ STA (iSTA)：成功运行，生成时序报告
-- ✅ GDSII：成功生成 `picorv32.gds2` (87MB)
+### 3.2 LibreLane/OpenROAD 后端流程（✅ 已验证）
+
+#### PicoRV32 设计
+- ✅ Floorplan：成功生成 1200um x 1200um 布局
+- ✅ Placement：成功完成全局布局和详细布局（density=0.18）
+- ✅ CTS：成功完成时钟树综合
+- ✅ Global Routing：成功完成全局布线
+- ✅ Detailed Routing：成功完成详细布线，DRC=0
+- ✅ Signoff DRC：Magic DRC=0, KLayout DRC=0
+- ✅ LVS：网表匹配，LVS=0
+- ✅ XOR：无差异，XOR=0
+- ✅ Antenna：7 个天线违规（可接受）
+- ✅ Timing：setup 违规=0, hold 违规=0
+- ✅ GDSII：成功生成完整版图
+- ✅ KiCad：成功生成 BGA-256 封装文件
+
+#### SERV 设计
+- ✅ Floorplan：成功生成 600um x 600um 布局
+- ✅ Placement：成功完成全局布局和详细布局（density=0.20）
+- ✅ CTS：成功完成时钟树综合
+- ✅ Global Routing：成功完成全局布线
+- ✅ Detailed Routing：成功完成详细布线，DRC=0
+- ✅ Signoff DRC：Magic DRC=0, KLayout DRC=0
+- ✅ LVS：网表匹配，LVS=0
+- ✅ XOR：无差异，XOR=0
+- ✅ GDSII：成功生成完整版图
 
 ### 3.3 关键修复记录
 | 问题 | 修复方案 |
 |------|---------|
-| `$::env(PDK_ROOT)` Yosys 不支持 | 改为模板替换 `__PDK_LIB_PATH__` |
-| `write_sdc` 非 Yosys 命令 | 改为复制已有 SDC 文件 |
-| iEDA Verilog parser 不支持 memory 数组 | 添加 `memory_map` pass |
-| iEDA 不支持复杂拼接赋值 `{a[3], a[1]} = ...` | 创建 `fix_netlist.py` 展开为逐位赋值 |
-| iEDA SDC 不支持 `remove_from_collection` | 简化 SDC 约束 |
-| iEDA SDC 不支持 `set_clock_latency` | 进一步简化 SDC |
-| HD/HS 单元库不匹配 | 创建自定义 `db_path_setting.tcl` 和配置文件 |
-| 无 ROW 定义导致布局崩溃 | 修正 site 名称 `unit` → `unithd` |
-| Placement density 0.8 导致路由崩溃 | 降低到 0.3，增大 die area 到 1000x1000 |
-| Routing 64 线程 OOM | 降低到 4 线程 |
-| iEDA 编译 OOM | 使用 -j1 单线程编译 |
-| KiCad PCB 文件 `;;` 注释语法错误 | 移除所有 `;;` 注释行 |
-| Routing 失败后无法生成 GDSII | 添加错误处理，使用 CTS 结果继续 |
+| OpenROAD 版本兼容性 | 创建 shim 脚本适配不同版本 |
+| 天线违规修复 | 启用 heuristic diode insertion |
+| max_slew 违规增加 | 降低 post-GRT antenna repair iterations |
+| max_cap 违规增加 | 降低 design repair margins |
+| 紫色渲染图 | 使用正确的 .lyp 层属性文件 |
+| KiCad 文件格式错误 | 修正 lib_symbols 格式和 UUID 匹配 |
+| 封装库找不到 | 创建 fp-lib-table 和 sym-lib-table |
 
 ---
 
-## 四、KiCad 测试载板（✅ 已完成）
+## 四、Signoff 检查结果（✅ 已完成）
 
-- ✅ PicoRV32 原理图符号（`kicad/symbols/picorv32.kicad_sym`）
-- ✅ QFN-48 封装（`kicad/footprints/QFN-48_7x7mm_P0.5mm.kicad_mod`）
-- ✅ 原理图设计（`kicad/test_board/test_board.kicad_sch`）
-  - PicoRV32 实例
-  - 去耦电容 (100nF)
-  - 100MHz 晶振
-  - 复位电路（上拉 + 按键）
-  - JTAG 接口
-  - GPIO 排针
-- ✅ 四层 PCB Layout（`kicad/test_board/test_board.kicad_pcb`）
-  - 尺寸：40mm x 30mm
-  - 层叠：F.Cu / In1.Cu (GND) / In2.Cu (PWR) / B.Cu
-  - 安装孔、接插件、晶振布局
+### 4.1 PicoRV32 Signoff 结果
+| 检查项 | 结果 | 说明 |
+|--------|------|------|
+| Routing DRC | ✅ 0 | OpenROAD 详细布线无违规 |
+| Magic DRC | ✅ 0 | Magic signoff DRC 无违规 |
+| KLayout DRC | ✅ 0 | KLayout signoff DRC 无违规 |
+| LVS | ✅ 0 | 网表完全匹配 |
+| XOR | ✅ 0 | 版图无差异 |
+| Antenna | ⚠️ 7 | 7 个天线违规（可接受） |
+| Setup Timing | ✅ 0 | 无 setup 违规 |
+| Hold Timing | ✅ 0 | 无 hold 违规 |
+| Max Slew | ⚠️ 9 | 9 个 max_slew 违规 |
+| Max Cap | ⚠️ 24 | 24 个 max_cap 违规 |
+| Max Fanout | ⚠️ 63 | 63 个 max_fanout 违规 |
+
+### 4.2 SERV Signoff 结果
+| 检查项 | 结果 | 说明 |
+|--------|------|------|
+| Routing DRC | ✅ 0 | OpenROAD 详细布线无违规 |
+| Magic DRC | ✅ 0 | Magic signoff DRC 无违规 |
+| KLayout DRC | ✅ 0 | KLayout signoff DRC 无违规 |
+| LVS | ✅ 0 | 网表完全匹配 |
+| XOR | ✅ 0 | 版图无差异 |
 
 ---
 
-## 五、文档与博客（✅ 已完成）
+## 五、KiCad PCB 输出（✅ 已完成）
 
-### 5.1 教程
+### 5.1 PicoRV32 BGA-256 封装
+- ✅ 原理图符号（`PicoRV32.kicad_sym`）
+- ✅ BGA-256 封装（`PicoRV32_BGA256.kicad_mod`）
+- ✅ 原理图设计（`PicoRV32_BGA256.kicad_sch`）
+- ✅ PCB 布局（`PicoRV32_BGA256.kicad_pcb`）
+- ✅ 项目文件（`PicoRV32_BGA256.kicad_pro`）
+- ✅ 封装库配置（`fp-lib-table`）
+- ✅ 符号库配置（`sym-lib-table`）
+
+### 5.2 BGA-256 封装规格
+- **封装类型**: BGA-256
+- **焊球阵列**: 16×16
+- **焊球间距**: 1.0mm
+- **封装尺寸**: 17mm × 17mm
+- **电源焊球**: 64 个 VPWR + 64 个 VGND
+- **信号焊球**: 128 个
+- **引脚数量**: 411 个
+
+---
+
+## 六、文档（✅ 已完成）
+
+### 6.1 核心文档
+| 文件 | 内容 | 状态 |
+|------|------|------|
+| `README.md` | 项目说明、架构、快速开始 | ✅ 已更新 |
+| `docs/COMMANDS.md` | 完整命令手册 | ✅ 已更新 |
+| `PROGRESS.md` | 进度总结 | ✅ 已更新 |
+| `USAGE.md` | 使用说明 | ✅ |
+
+### 6.2 教程
 | 文件 | 内容 |
 |------|------|
 | `docs/tutorials/01_setup_guide.md` | 环境搭建指南 |
 | `docs/tutorials/02_synthesis_guide.md` | Yosys 综合教程 |
-| `docs/tutorials/03_backend_flow.md` | iEDA 后端流程教程 |
+| `docs/tutorials/03_backend_flow.md` | 后端流程教程 |
 | `docs/tutorials/04_kicad_testboard.md` | KiCad 测试载板设计教程 |
-
-### 5.2 博客
-| 文件 | 内容 |
-|------|------|
-| `docs/blog/2026_04_30_project_launch.md` | 项目启动博客 |
-| `docs/blog/2026_04_30_ieda_integration.md` | iEDA 集成经验分享 |
 
 ---
 
-## 六、测试（✅ 已完成）
+## 七、测试（✅ 已完成）
 
-### 6.1 仿真测试
+### 7.1 仿真测试
 - ✅ `tests/simulation/tb_picorv32.v` - 测试平台
 - ✅ `tests/simulation/test.hex` - 测试程序
 - ✅ `tests/simulation/Makefile` - 仿真构建脚本
 
-### 6.2 形式验证
+### 7.2 形式验证
 - ✅ `tests/formal/picorv32.sby` - SymbiYosys 配置
 - ✅ `tests/formal/properties.v` - 形式验证属性
 - ✅ `tests/formal/run_formal.sh` - 运行脚本
@@ -172,45 +194,70 @@
 
 ---
 
-## 七、Docker 环境（✅ 已完成）
+## 八、Docker 环境（✅ 已完成）
 
-- ✅ `docker/Dockerfile` - EDA 工具链 Docker 镜像（Yosys, iEDA, KiCad, SKY130 PDK）
-- ✅ `docker/docker-compose.yml` - Docker Compose 配置（EDA 服务 + 前端服务）
+- ✅ `docker/Dockerfile` - EDA 工具链 Docker 镜像
+- ✅ `docker/docker-compose.yml` - Docker Compose 配置
 - ⏳ Docker 安装（需要 sudo 权限，用户手动安装）
 
 ---
 
-## 八、AI 交互控制台（✅ 已完成）
+## 九、AI 交互控制台（✅ 已完成）
 
 - ✅ `frontend/app.py` - Flask 后端（命令解析、日志输出、SSE 流式推送）
 - ✅ `frontend/templates/index.html` - Web 前端（命令面板、日志面板、状态面板）
-- ✅ 支持命令: 综合, floorplan, placement, cts, routing, sta, gdsii, 全流程, kicad, status
-- ✅ 实时日志输出，告诉用户每一步做了什么
+- ✅ 支持命令: 综合, pico, serv, status, kicad
+- ✅ 实时日志输出
 - ✅ API 接口: `/api/command`, `/api/logs`, `/api/status`, `/api/help`
-
----
-
-## 九、文档（✅ 已完成）
-
-- ✅ `USAGE.md` - 使用说明（环境配置、各阶段生成文件查看方法）
-- ✅ `docs/COMMANDS.md` - 完整命令手册（前端、后端、PCB 全流程命令详解）
-- ✅ 包含日志输出示例，告诉用户每一步做了什么
 
 ---
 
 ## 十、GitHub 仓库（✅ 已完成）
 
 - ✅ `git init` 初始化
-- ✅ 首次 commit（58 文件，~11500 行）
-- ✅ Git 提交者信息已更新为 ForBloodB <3347432324@qq.com>
+- ✅ 首次 commit
+- ✅ Git 提交者信息已更新
 - ⏳ 推送到远程仓库（需要 GitHub 认证）
 
 ---
 
 ## 十一、已知限制和后续工作
 
-1. **iEDA Routing 收敛**：在 7.7GB 内存环境下，布线步骤的 pin access 迭代可能无法完全收敛（约 5600 个 DRC 违例）。需要更大内存或优化布局密度。
-2. **SDC 约束简化**：iEDA STA 引擎仅支持基本 SDC 命令（`create_clock`, `set_clock_uncertainty`），不支持 `set_input_delay` 等高级约束。
-3. **单元库选择**：当前使用 HD（高密度）库。HS（高速）库可能在时序上更优，但需要更新所有配置。
-4. **iEDA 构建**：源码需要重新编译（CMake + make），预计 30-60 分钟。使用 -j1 避免 OOM。
-5. **Docker 安装**：需要用户手动安装 Docker（需要 sudo 权限）。
+### 已解决的问题
+1. ✅ **iEDA Routing 收敛问题**：已切换到 LibreLane/OpenROAD 流程，routing DRC=0
+2. ✅ **SDC 约束简化问题**：LibreLane 支持完整 SDC 命令
+3. ✅ **单元库选择问题**：使用 HD 库，配置优化完成
+
+### 当前状态
+1. ✅ PicoRV32 完整 signoff 流程已验证（DRC=0, LVS=0, XOR=0）
+2. ✅ SERV 完整 signoff 流程已验证（DRC=0, LVS=0, XOR=0）
+3. ✅ KiCad BGA-256 封装文件已生成
+4. ✅ 文档已更新，反映当前 LibreLane/OpenROAD 流程
+
+### 后续优化方向
+1. **频率优化**：在 signoff clean 的基础上，逐步降低 CLOCK_PERIOD
+2. **面积优化**：在频率稳定的基础上，增加 FP_CORE_UTIL 和 PL_TARGET_DENSITY
+3. **天线违规修复**：进一步优化 antenna repair 策略
+4. **max_slew/cap/fanout 修复**：优化 design repair 参数
+
+---
+
+## 十二、工具链总结
+
+### 必需工具
+| 工具 | 用途 | 安装方式 |
+|------|------|----------|
+| Yosys | RTL 综合 | `sudo apt install yosys` |
+| LibreLane | 后端流程 | `pip3 install librelane` |
+| Magic | DRC 检查 | 自动安装 |
+| KLayout | DRC 检查 | `sudo apt install klayout` |
+| KiCad | PCB 设计 | `sudo apt install kicad` |
+| Volare | PDK 管理 | `pip3 install volare` |
+
+### 可选工具
+| 工具 | 用途 | 说明 |
+|------|------|------|
+| OpenROAD | EDA 平台 | 通过 LibreLane 自动调用 |
+| Netgen | LVS 检查 | 通过 LibreLane 自动调用 |
+| Icarus Verilog | 仿真 | `sudo apt install iverilog` |
+| GTKWave | 波形查看 | `sudo apt install gtkwave` |
