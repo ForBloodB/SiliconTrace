@@ -26,8 +26,10 @@ set_input_delay 2.50 -clock [get_clocks $clk_name] -max $input_ports
 set_input_delay 0.30 -clock [get_clocks $clk_name] -min $input_ports
 set_output_delay 2.50 -clock [get_clocks $clk_name] -max $output_ports
 set_output_delay 0.20 -clock [get_clocks $clk_name] -min $output_ports
-set_load 0.05 -max $output_ports
-set_load 0.01 -min $output_ports
+# 当前开源 iEDA 构建对 all_outputs 上的 set_load 支持不稳定，后端流
+# 使用 IO delay 与全局电气约束建模输出负载。
+# set_load 0.05 -max $output_ports
+# set_load 0.01 -min $output_ports
 
 # 基本电气约束，驱动综合/优化修复高扇出和过载网络
 set_max_transition 1.20 [current_design]

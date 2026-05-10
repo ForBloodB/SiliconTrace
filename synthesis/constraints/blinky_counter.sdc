@@ -17,8 +17,10 @@ set_output_delay 1.000 -clock [get_clocks clk] -max $output_ports
 set_output_delay 0.100 -clock [get_clocks clk] -min $output_ports
 
 set_input_transition 0.100 $input_ports
-set_load 0.030 -max $output_ports
-set_load 0.010 -min $output_ports
+# The current open iEDA build rejects set_load on all_outputs. Keep IO delays
+# and global electrical limits as the portable constraints for this demo.
+# set_load 0.030 -max $output_ports
+# set_load 0.010 -min $output_ports
 
 set_max_transition 0.500 [current_design]
 set_max_capacitance 0.200 [current_design]

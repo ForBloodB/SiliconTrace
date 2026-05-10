@@ -1,6 +1,6 @@
 # 硅迹开源 (SiliconTrace Open)
 
-> 一个中国大学生，不依赖任何商业软件License，仅凭开源工具和一台电脑，走完从芯片设计到板级验证的完整链路。
+> 两个中国大学生，不依赖任何商业软件License，仅凭开源工具和一台电脑，走完从芯片设计到板级验证的完整链路。
 
 ---
 
@@ -413,5 +413,4 @@ curl -X POST http://localhost:5000/api/upload/mcp \
 ## 联系方式
 
 - GitHub: [SiliconTrace_Open](https://github.com/ForBloodB/SiliconTrace_Open)
-- B站: 硅迹开源
-- 知乎: 硅迹开源
+- B站: 血舞蝶ForBloodB
